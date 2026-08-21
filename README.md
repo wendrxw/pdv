@@ -31,3 +31,4 @@ uv run ruff check apps config manage.py
 - [Arquitetura](docs/architecture.md)
 - [Multi-tenancy](docs/multi-tenancy.md)
 - [Clientes da plataforma](docs/clients.md)
+- [Produtos, estoque e inventário](docs/products.md)

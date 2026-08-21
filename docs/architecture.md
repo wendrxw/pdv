@@ -81,13 +81,26 @@ Tenant criado + Onboarding INICIADO + cliente ATIVO
 Usuário convidado vinculado ao tenant
 ```
 
-## Próximas fases (fora do escopo desta task)
+## Módulos implementados
 
-1. Produtos, categorias, código de barras (EAN-13 interno), estoque.
-2. Inventário e movimentações com `EstoqueService`.
-3. Módulo financeiro (entradas, saídas, recebíveis, análise).
-4. PDV (caixa, carrinho, pagamentos).
-5. Módulo fiscal NFC-e (SEFAZ-SP homologação).
+### Fundação (TSK_00001)
+
+Scaffold, multi-tenancy, autenticação, clientes da plataforma, auditoria,
+landing page. Ver [docs/clients.md](clients.md) e
+[docs/multi-tenancy.md](multi-tenancy.md).
+
+### Produtos, Estoque e Inventário (TSK_00002–00005)
+
+Catálogo com isolamento por tenant, EAN-13 interno com renderização SVG,
+controle de estoque transacional com lock pessimista e histórico completo,
+inventário físico com ajustes auditáveis. Ver
+[docs/products.md](products.md).
+
+## Próximas fases (fora do escopo atual)
+
+1. Módulo financeiro (entradas, saídas, recebíveis, análise).
+2. PDV (caixa, carrinho, pagamentos) consumindo `EstoqueService`.
+3. Módulo fiscal NFC-e (SEFAZ-SP homologação).
 
 ## Como rodar
 
