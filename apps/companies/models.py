@@ -29,6 +29,14 @@ class Tenant(models.Model):
         db_index=True,
     )
     observacao = models.TextField("observação", blank=True)
+    permitir_estoque_negativo = models.BooleanField(
+        "permitir estoque negativo",
+        default=False,
+        help_text=(
+            "Quando desabilitado, saídas que deixarem o saldo negativo "
+            "são rejeitadas com erro de domínio."
+        ),
+    )
     data_criacao = models.DateTimeField("criado em", auto_now_add=True)
     data_atualizacao = models.DateTimeField("atualizado em", auto_now=True)
 

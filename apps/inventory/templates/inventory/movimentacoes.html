@@ -1,0 +1,67 @@
+{% extends "app_base.html" %}
+{% block app_title %}Movimentações{% endblock %}
+
+{% block app_content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-6">Movimentações de estoque</h1>
+
+<form method="get" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+    <select name="tipo" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todos os tipos</option>
+        {% for value, label in tipos %}
+            <option value="{{ value }}" {% if value == tipo_selecionado %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="produto" class="md:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todos os produtos</option>
+        {% for produto in produtos %}
+            <option value="{{ produto.pk }}" {% if produto.pk|stringformat:"s" == produto_selecionado %}selected{% endif %}>{{ produto.nome }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Filtrar</button>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Data</th>
+                <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">Tipo</th>
+                <th class="px-4 py-3">Qtd.</th>
+                <th class="px-4 py-3">Anterior → Posterior</th>
+                <th class="px-4 py-3">Usuário</th>
+                <th class="px-4 py-3">Motivo/Ref.</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for mov in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 whitespace-nowrap">{{ mov.data_criacao|date:"d/m/Y H:i" }}</td>
+                    <td class="px-4 py-3">{{ mov.produto.nome }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ mov.get_tipo_display }}</td>
+                    <td class="px-4 py-3 {% if mov.saldo_posterior >= mov.saldo_anterior %}text-emerald-600{% else %}text-red-600{% endif %}">
+                        {{ mov.quantidade }}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">{{ mov.saldo_anterior }} → {{ mov.saldo_posterior }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ mov.usuario|default:"—" }}</td>
+                    <td class="px-4 py-3 text-slate-400 text-xs">{{ mov.motivo|default:mov.referencia|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="px-4 py-10 text-center text-slate-400">Nenhuma movimentação encontrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
+        {% if pagina.has_previous %}
+            <a href="?page={{ pagina.previous_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-indigo-600">&laquo; Anterior</a>
+        {% else %}<span></span>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}
+            <a href="?page={{ pagina.next_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-indigo-600">Próxima &raquo;</a>
+        {% else %}<span></span>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}

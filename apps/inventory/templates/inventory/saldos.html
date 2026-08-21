@@ -1,0 +1,63 @@
+{% extends "app_base.html" %}
+{% block app_title %}Saldos de estoque{% endblock %}
+
+{% block app_content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-6">Saldos por produto</h1>
+
+<form method="get" class="mb-6 flex gap-2">
+    <input type="text" name="q" value="{{ termo }}" placeholder="Buscar produto ou SKU"
+           class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Buscar</button>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Saldo</th>
+                <th class="px-4 py-3">Mínimo</th>
+                <th class="px-4 py-3">Situação</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for estoque in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        <a href="{% url 'inventory:historico_produto' estoque.produto.uuid %}" class="text-indigo-600 hover:text-indigo-800">
+                            {{ estoque.produto.nome }}
+                        </a>
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">{{ estoque.produto.sku|default:"—" }}</td>
+                    <td class="px-4 py-3 font-medium">{{ estoque.quantidade }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ estoque.produto.estoque_minimo }}</td>
+                    <td class="px-4 py-3">
+                        {% if estoque.situacao == 'SEM_ESTOQUE' %}
+                            <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">■ Sem estoque</span>
+                        {% elif estoque.situacao == 'ESTOQUE_BAIXO' %}
+                            <span class="rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">▲ Estoque baixo</span>
+                        {% else %}
+                            <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">● Em estoque</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">Nenhum saldo registrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
+        {% if pagina.has_previous %}
+            <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}" class="hover:text-indigo-600">&laquo; Anterior</a>
+        {% else %}<span></span>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}
+            <a href="?page={{ pagina.next_page_number }}&q={{ termo }}" class="hover:text-indigo-600">Próxima &raquo;</a>
+        {% else %}<span></span>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}
