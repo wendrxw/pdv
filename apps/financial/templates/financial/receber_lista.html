@@ -1,0 +1,55 @@
+{% extends "app_base.html" %}
+{% block app_title %}Contas a receber{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold text-slate-900">Contas a receber</h1>
+    <a href="{% url 'financial:receber_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova conta a receber</a>
+</div>
+
+<form method="get" class="mb-4 flex flex-wrap gap-2">
+    <input type="text" name="q" value="{{ busca }}" placeholder="Buscar por cliente ou descrição..." class="rounded-lg border border-slate-300 px-3 py-2 text-sm w-72">
+    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todos os status</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if value == status %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Filtrar</button>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Descrição</th>
+                <th class="px-4 py-3">Cliente</th>
+                <th class="px-4 py-3">Total</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Origem</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for conta in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3"><a href="{% url 'financial:receber_detalhe' conta.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ conta.descricao }}</a></td>
+                    <td class="px-4 py-3">{{ conta.cliente_nome|default:"—" }}</td>
+                    <td class="px-4 py-3 font-medium">{{ conta.valor_total }}</td>
+                    <td class="px-4 py-3">
+                        {% if conta.status == 'RECEBIDA' %}
+                            <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Recebida</span>
+                        {% elif conta.status == 'CANCELADA' %}
+                            <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
+                        {% else %}
+                            <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">{{ conta.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">{{ conta.get_origem_display }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">Nenhuma conta encontrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

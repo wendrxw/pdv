@@ -1,0 +1,114 @@
+{% extends "app_base.html" %}
+{% block app_title %}Financeiro{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Análise financeira</h1>
+        <p class="text-sm text-slate-500">Período de {{ inicio|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }} · modo {{ modo }}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'financial:entrada_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova entrada</a>
+        <a href="{% url 'financial:saida_nova' %}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Nova saída</a>
+    </div>
+</div>
+
+<form method="get" class="mb-6 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-slate-200 p-4">
+    <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Início</label>
+        <input type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    </div>
+    <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Fim</label>
+        <input type="date" name="fim" value="{{ fim|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    </div>
+    <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Modo</label>
+        <select name="modo" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="CAIXA" {% if modo == 'CAIXA' %}selected{% endif %}>Caixa</option>
+            <option value="COMPETENCIA" {% if modo == 'COMPETENCIA' %}selected{% endif %}>Competência</option>
+        </select>
+    </div>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Aplicar</button>
+</form>
+
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Entradas</p>
+        <p class="mt-1 text-xl font-bold text-emerald-600">R$ {{ entradas }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Saídas</p>
+        <p class="mt-1 text-xl font-bold text-red-600">R$ {{ saidas }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Resultado</p>
+        <p class="mt-1 text-xl font-bold {% if resultado >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">R$ {{ resultado }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Vencido</p>
+        <p class="mt-1 text-xl font-bold text-amber-600">R$ {{ vencido }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs uppercase tracking-wide text-slate-500">A vencer</p>
+        <p class="mt-1 text-xl font-bold text-slate-700">R$ {{ a_vencer }}</p>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mb-8">
+    <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Fluxo do período</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr><th class="px-4 py-2">Data</th><th class="px-4 py-2">Entradas</th><th class="px-4 py-2">Saídas</th><th class="px-4 py-2">Resultado</th><th class="px-4 py-2">Acumulado</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for dia in fluxo %}
+                    <tr>
+                        <td class="px-4 py-2">{{ dia.data|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-2 text-emerald-600">{{ dia.entradas }}</td>
+                        <td class="px-4 py-2 text-red-600">{{ dia.saidas }}</td>
+                        <td class="px-4 py-2 font-medium">{{ dia.resultado }}</td>
+                        <td class="px-4 py-2 text-slate-500">{{ dia.acumulado }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Sem movimentações no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <div class="space-y-6">
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Entradas por categoria</h2>
+            <ul class="divide-y divide-slate-50 text-sm">
+                {% for linha in categorias_entradas %}
+                    <li class="flex justify-between px-4 py-2"><span>{{ linha.categoria }}</span><span class="font-medium text-emerald-600">{{ linha.total }}</span></li>
+                {% empty %}<li class="px-4 py-6 text-center text-slate-400">Sem dados.</li>{% endfor %}
+            </ul>
+        </section>
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Saídas por categoria</h2>
+            <ul class="divide-y divide-slate-50 text-sm">
+                {% for linha in categorias_saidas %}
+                    <li class="flex justify-between px-4 py-2"><span>{{ linha.categoria }}</span><span class="font-medium text-red-600">{{ linha.total }}</span></li>
+                {% empty %}<li class="px-4 py-6 text-center text-slate-400">Sem dados.</li>{% endfor %}
+            </ul>
+        </section>
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Contas</h2>
+            <ul class="divide-y divide-slate-50 text-sm">
+                {% for conta in contas %}
+                    <li class="flex justify-between px-4 py-2"><span>{{ conta.nome }} <span class="text-xs text-slate-400">({{ conta.tipo }})</span></span><span class="font-medium">{{ conta.saldo_atual }}</span></li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+</div>
+
+<div class="flex gap-3 text-sm">
+    <a href="{% url 'financial:entradas' %}" class="text-indigo-600 hover:text-indigo-800">Ver entradas &rarr;</a>
+    <a href="{% url 'financial:saidas' %}" class="text-indigo-600 hover:text-indigo-800">Ver saídas &rarr;</a>
+    <a href="{% url 'financial:receber' %}" class="text-indigo-600 hover:text-indigo-800">Contas a receber &rarr;</a>
+</div>
+{% endblock %}
