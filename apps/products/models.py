@@ -109,6 +109,15 @@ class Produto(TenantAwareModel):
     )
     nome = models.CharField("nome", max_length=200)
     sku = models.CharField("SKU", max_length=60, blank=True)
+    codigo_barras = models.CharField(
+        "código de barras",
+        max_length=13,
+        blank=True,
+        help_text=(
+            "EAN-13. Códigos gerados pelo sistema usam o prefixo 2 "
+            "(faixa interna de uso da loja), não são GTIN registrados."
+        ),
+    )
     descricao = models.TextField("descrição", blank=True)
     tamanho = models.CharField("tamanho", max_length=50, blank=True)
     unidade_medida = models.CharField(
@@ -178,10 +187,19 @@ class Produto(TenantAwareModel):
                 condition=~Q(sku=""),
                 name="unique_produto_sku_per_tenant",
             ),
+            # Código de barras opcional; único dentro do tenant quando
+            # informado. Não reutilizado após exclusão lógica (a constraint
+            # considera todos os produtos, ativos ou não).
+            models.UniqueConstraint(
+                fields=["tenant", "codigo_barras"],
+                condition=~Q(codigo_barras=""),
+                name="unique_produto_codigo_barras_per_tenant",
+            ),
         ]
         indexes = [
             models.Index(fields=["tenant", "nome"]),
             models.Index(fields=["tenant", "ativo"]),
+            models.Index(fields=["tenant", "codigo_barras"]),
         ]
 
     def __str__(self):

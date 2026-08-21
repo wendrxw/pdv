@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .barcode import BarcodeError, BarcodeRenderer, BarcodeService
 from .forms import ProdutoForm
 from .models import Categoria, Marca, Produto
 from .services import (
@@ -139,3 +141,32 @@ def alternar_status(request, uuid):
             reativar_produto(produto, usuario=request.user)
             messages.success(request, f"Produto {produto.nome} reativado.")
     return redirect("products:detalhe", uuid=produto.uuid)
+
+
+@login_required
+def gerar_codigo_barras(request):
+    """Gera um EAN-13 interno candidato para o tenant (POST/JSON).
+
+    O código definitivo é revalidado no backend ao salvar o formulário.
+    """
+    tenant = _tenant_atual(request)
+    if tenant is None:
+        return JsonResponse({"erro": "Tenant não disponível."}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"erro": "Método não permitido."}, status=405)
+    codigo = BarcodeService.generate(tenant)
+    return JsonResponse({"codigo": codigo})
+
+
+@login_required
+def codigo_barras_svg(request, uuid):
+    """Renderiza o código de barras do produto como SVG."""
+    tenant = _tenant_atual(request)
+    if tenant is None:
+        return HttpResponse(status=403)
+    produto = get_object_or_404(Produto, tenant=tenant, uuid=uuid)
+    try:
+        svg = BarcodeRenderer.to_svg(produto.codigo_barras)
+    except BarcodeError:
+        return HttpResponse(status=404)
+    return HttpResponse(svg, content_type="image/svg+xml")

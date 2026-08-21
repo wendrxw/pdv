@@ -45,8 +45,12 @@ def buscar_produtos(
         "categoria", "marca"
     )
     if termo:
-        queryset = queryset.filter(nome__icontains=termo) | queryset.filter(
-            sku__icontains=termo
+        from django.db.models import Q
+
+        queryset = queryset.filter(
+            Q(nome__icontains=termo)
+            | Q(sku__icontains=termo)
+            | Q(codigo_barras__icontains=termo)
         )
     if categoria:
         queryset = queryset.filter(categoria=categoria)

@@ -110,3 +110,59 @@ class AlternarStatusViewTest(ProdutosViewBaseTestCase):
         self.client.get(reverse("products:alternar_status", args=[produto.uuid]))
         produto.refresh_from_db()
         self.assertTrue(produto.ativo)
+
+
+class BarcodeViewTest(ProdutosViewBaseTestCase):
+    def test_gera_codigo_via_post_json(self):
+        resposta = self.client.post(reverse("products:gerar_codigo_barras"))
+        self.assertEqual(resposta.status_code, 200)
+        codigo = resposta.json()["codigo"]
+        self.assertEqual(len(codigo), 13)
+
+    def test_get_nao_gera_codigo(self):
+        resposta = self.client.get(reverse("products:gerar_codigo_barras"))
+        self.assertEqual(resposta.status_code, 405)
+
+    def test_svg_do_produto_com_codigo(self):
+        from ..barcode import BarcodeService
+
+        produto = Produto.objects.create(tenant=self.tenant, nome="Com código")
+        produto.codigo_barras = BarcodeService.generate(self.tenant)
+        produto.save(update_fields=["codigo_barras"])
+        resposta = self.client.get(
+            reverse("products:codigo_barras_svg", args=[produto.uuid])
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta["Content-Type"], "image/svg+xml")
+
+    def test_svg_sem_codigo_retorna_404(self):
+        produto = Produto.objects.create(tenant=self.tenant, nome="Sem código")
+        resposta = self.client.get(
+            reverse("products:codigo_barras_svg", args=[produto.uuid])
+        )
+        self.assertEqual(resposta.status_code, 404)
+
+    def test_formulario_rejeita_codigo_invalido(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Produto código ruim",
+                "codigo_barras": "1234567890123",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="Produto código ruim").exists())
+
+    def test_busca_por_codigo_de_barras_na_listagem(self):
+        from ..barcode import BarcodeService
+
+        produto = Produto.objects.create(tenant=self.tenant, nome="Achável")
+        produto.codigo_barras = BarcodeService.generate(self.tenant)
+        produto.save(update_fields=["codigo_barras"])
+        resposta = self.client.get(
+            reverse("products:lista"), {"q": produto.codigo_barras}
+        )
+        self.assertIn("Achável", resposta.content.decode())

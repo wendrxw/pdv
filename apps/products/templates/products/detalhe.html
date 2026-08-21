@@ -64,6 +64,22 @@
             <p class="mt-1 text-sm text-slate-500">Máximo: <span class="font-medium text-slate-800">{{ produto.estoque_maximo|default:"—" }}</span></p>
             <p class="mt-3 text-xs text-slate-400">Controle de saldo disponível no módulo de estoque.</p>
         </section>
+        <section class="bg-white rounded-xl border border-slate-200 p-6">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Código de barras</h2>
+            {% if produto.codigo_barras %}
+                <div class="overflow-x-auto">
+                    <img src="{% url 'products:codigo_barras_svg' produto.uuid %}"
+                         alt="Código de barras {{ produto.codigo_barras }}"
+                         class="max-w-full h-auto" width="240">
+                </div>
+                <p class="mt-2 font-mono text-sm">{{ produto.codigo_barras }}</p>
+                <p class="mt-1 text-xs text-slate-400">EAN-13 de uso interno da loja.</p>
+            {% else %}
+                <p class="text-xs text-slate-400">
+                    Sem código de barras. Gere um na edição do produto.
+                </p>
+            {% endif %}
+        </section>
     </aside>
 </div>
 {% endblock %}

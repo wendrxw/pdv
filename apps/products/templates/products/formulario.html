@@ -26,6 +26,17 @@
                 {% if form.sku.errors %}<p class="mt-1 text-xs text-red-600">{{ form.sku.errors.0 }}</p>{% endif %}
             </div>
             <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.codigo_barras.label }}</label>
+                <div class="flex gap-2">
+                    {{ form.codigo_barras }}
+                    <button type="button" id="btn-gerar-codigo"
+                            class="whitespace-nowrap rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">
+                        Gerar código
+                    </button>
+                </div>
+                {% if form.codigo_barras.errors %}<p class="mt-1 text-xs text-red-600">{{ form.codigo_barras.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.tamanho.label }}</label>
                 {{ form.tamanho }}
                 {% if form.tamanho.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tamanho.errors.0 }}</p>{% endif %}
@@ -85,4 +96,28 @@
         </div>
     </form>
 </div>
+
+<script>
+    (function () {
+        var botao = document.getElementById("btn-gerar-codigo");
+        if (!botao) return;
+        botao.addEventListener("click", function () {
+            fetch("{% url 'products:gerar_codigo_barras' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": document.querySelector(
+                        '[name=csrfmiddlewaretoken]'
+                    ).value
+                }
+            })
+                .then(function (resposta) { return resposta.json(); })
+                .then(function (dados) {
+                    if (dados.codigo) {
+                        var campo = document.getElementById("id_codigo_barras");
+                        campo.value = dados.codigo;
+                    }
+                });
+        });
+    })();
+</script>
 {% endblock %}
