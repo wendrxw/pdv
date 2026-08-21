@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Estoque, Fornecedor, MovimentacaoEstoque
+from .models import (
+    Estoque,
+    Fornecedor,
+    Inventario,
+    InventarioItem,
+    MovimentacaoEstoque,
+)
 
 
 @admin.register(Fornecedor)
@@ -53,3 +59,56 @@ class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+class InventarioItemInline(admin.TabularInline):
+    model = InventarioItem
+    extra = 0
+    readonly_fields = (
+        "uuid",
+        "quantidade_sistema",
+        "quantidade_contada",
+        "divergencia",
+    )
+
+    def divergencia(self, obj):
+        return obj.divergencia if obj else None
+
+    divergencia.short_description = "divergência"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Inventario)
+class InventarioAdmin(admin.ModelAdmin):
+    list_display = (
+        "descricao",
+        "tenant",
+        "status",
+        "usuario_criacao",
+        "data_inicio",
+        "data_finalizacao",
+    )
+    list_filter = ("tenant", "status", "data_inicio")
+    search_fields = ("descricao", "uuid")
+    readonly_fields = (
+        "uuid",
+        "data_inicio",
+        "data_finalizacao",
+    )
+    inlines = [InventarioItemInline]
+
+    actions = ["cancelar_selecionados"]
+
+    @admin.action(description="Cancelar inventários selecionados")
+    def cancelar_selecionados(self, request, queryset):
+        from .inventario import InventarioError, cancelar
+
+        for inventario in queryset.exclude(
+            status__in=[Inventario.Status.FINALIZADO, Inventario.Status.CANCELADO]
+        ):
+            try:
+                cancelar(inventario, usuario=request.user)
+            except InventarioError:
+                pass

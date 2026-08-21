@@ -1,0 +1,81 @@
+{% extends "app_base.html" %}
+{% block app_title %}{{ inventario.descricao }}{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">{{ inventario.descricao }}</h1>
+        <p class="text-sm text-slate-500">
+            {{ inventario.get_status_display }} · iniciado em {{ inventario.data_inicio|date:"d/m/Y H:i" }}
+            {% if inventario.data_finalizacao %}· finalizado em {{ inventario.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}
+        </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        {% if inventario.status == 'ABERTO' %}
+            <form method="post" action="{% url 'inventory:inventario_acao' inventario.uuid 'iniciar-contagem' %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Iniciar contagem</button>
+            </form>
+        {% endif %}
+        {% if inventario.status == 'ABERTO' or inventario.status == 'EM_CONTAGEM' %}
+            <a href="{% url 'inventory:inventario_contagem' inventario.uuid %}"
+               class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Contagem</a>
+        {% endif %}
+        {% if inventario.status == 'EM_CONTAGEM' %}
+            <form method="post" action="{% url 'inventory:inventario_acao' inventario.uuid 'revisao' %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Enviar para revisão</button>
+            </form>
+        {% endif %}
+        {% if inventario.status == 'EM_REVISAO' %}
+            <form method="post" action="{% url 'inventory:inventario_finalizar' inventario.uuid %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Finalizar e aplicar ajustes</button>
+            </form>
+        {% endif %}
+        {% if inventario.status == 'EM_REVISAO' %}
+            <a href="{% url 'inventory:inventario_divergencias' inventario.uuid %}"
+               class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100">Divergências</a>
+        {% endif %}
+        {% if inventario.status != 'FINALIZADO' and inventario.status != 'CANCELADO' %}
+            <form method="post" action="{% url 'inventory:inventario_acao' inventario.uuid 'cancelar' %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100">Cancelar</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">Sistema (referência)</th>
+                <th class="px-4 py-3">Contado</th>
+                <th class="px-4 py-3">Divergência</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for item in itens %}
+                <tr>
+                    <td class="px-4 py-3">{{ item.produto.nome }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ item.quantidade_sistema }}</td>
+                    <td class="px-4 py-3">{{ item.quantidade_contada|default:"—" }}</td>
+                    <td class="px-4 py-3">
+                        {% if item.divergencia == None %}
+                            <span class="text-slate-400">—</span>
+                        {% elif item.tem_divergencia %}
+                            <span class="font-medium text-red-600">{{ item.divergencia }}</span>
+                        {% else %}
+                            <span class="text-emerald-600">0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="px-4 py-10 text-center text-slate-400">Nenhum item no inventário.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

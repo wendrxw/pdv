@@ -1,0 +1,42 @@
+{% extends "app_base.html" %}
+{% block app_title %}Divergências — {{ inventario.descricao }}{% endblock %}
+
+{% block app_content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Divergências</h1>
+<p class="text-sm text-slate-500 mb-6">
+    {{ inventario.descricao }} · itens com diferença entre contagem física
+    e referência do sistema. Ao finalizar, o saldo será ajustado para a
+    quantidade contada com movimentação auditável.
+</p>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">Sistema</th>
+                <th class="px-4 py-3">Contado</th>
+                <th class="px-4 py-3">Divergência</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for item in itens %}
+                <tr>
+                    <td class="px-4 py-3">{{ item.produto.nome }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ item.quantidade_sistema }}</td>
+                    <td class="px-4 py-3">{{ item.quantidade_contada }}</td>
+                    <td class="px-4 py-3 font-medium {{ item.divergencia > 0|yesno:'text-emerald-600,text-red-600' }}">
+                        {{ item.divergencia }}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="px-4 py-10 text-center text-slate-400">Nenhuma divergência encontrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-6">
+    <a href="{% url 'inventory:inventario_detalhe' inventario.uuid %}" class="text-sm text-indigo-600 hover:text-indigo-800">&larr; Voltar ao inventário</a>
+</div>
+{% endblock %}
