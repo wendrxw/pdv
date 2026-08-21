@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <a href="/" class="text-xl font-bold text-indigo-600">PDV</a>
+        <nav class="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex" aria-label="Navegação principal">
+            <a href="#recursos" class="hover:text-indigo-600">Recursos</a>
+            <a href="#beneficios" class="hover:text-indigo-600">Benefícios</a>
+            <a href="#como-funciona" class="hover:text-indigo-600">Como funciona</a>
+        </nav>
+        <div class="flex items-center gap-3">
+            <a href="/login/" class="hidden text-sm font-medium text-slate-600 hover:text-indigo-600 sm:block">Entrar</a>
+            <a href="{% url 'web:contato' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+                Fale conosco
+            </a>
+        </div>
+    </div>
+</header>
+
+<main>
+    <!-- Hero -->
+    <section class="mx-auto max-w-6xl px-4 py-20 text-center md:py-28">
+        <h1 class="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
+            Gestão simples para o seu negócio.
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+            Controle produtos, estoque, vendas e financeiro em um único lugar.
+            Rápido, completo e acessível de qualquer lugar.
+        </p>
+        <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a href="{% url 'web:contato' %}" class="w-full rounded-lg bg-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500 sm:w-auto">
+                Quero conhecer
+            </a>
+            <a href="#recursos" class="w-full rounded-lg border border-slate-300 bg-white px-8 py-3 text-base font-semibold text-slate-700 hover:bg-slate-100 sm:w-auto">
+                Ver recursos
+            </a>
+        </div>
+    </section>
+
+    <!-- Recursos -->
+    <section id="recursos" class="border-y border-slate-200 bg-white py-20">
+        <div class="mx-auto max-w-6xl px-4">
+            <h2 class="text-center text-3xl font-bold text-slate-900">Tudo o que você precisa</h2>
+            <p class="mx-auto mt-4 max-w-xl text-center text-slate-600">
+                Módulos integrados para a operação completa da sua empresa.
+            </p>
+            <div class="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Produtos</h3>
+                    <p class="mt-2 text-slate-600">Cadastre e organize seus produtos de forma rápida e prática.</p>
+                </article>
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Estoque</h3>
+                    <p class="mt-2 text-slate-600">Tenha controle das entradas, saídas e movimentações do seu estoque.</p>
+                </article>
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Financeiro</h3>
+                    <p class="mt-2 text-slate-600">Controle entradas, saídas, recebimentos e acompanhe a saúde financeira do negócio.</p>
+                </article>
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Vendas / PDV</h3>
+                    <p class="mt-2 text-slate-600">Centralize suas vendas e tenha uma visão completa das operações.</p>
+                </article>
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Relatórios</h3>
+                    <p class="mt-2 text-slate-600">Transforme os dados da sua operação em informações úteis para tomar decisões.</p>
+                </article>
+                <article class="rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Cada empresa com seu ambiente</h3>
+                    <p class="mt-2 text-slate-600">Cada empresa possui seu próprio ambiente, com seus dados organizados e protegidos.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefícios -->
+    <section id="beneficios" class="py-20">
+        <div class="mx-auto max-w-6xl px-4">
+            <h2 class="text-center text-3xl font-bold text-slate-900">Benefícios</h2>
+            <ul class="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                <li class="text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-2xl" aria-hidden="true">&#128203;</div>
+                    <h3 class="mt-4 font-semibold text-slate-900">Organização</h3>
+                    <p class="mt-2 text-sm text-slate-600">Todas as informações do negócio em um só lugar.</p>
+                </li>
+                <li class="text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-2xl" aria-hidden="true">&#128274;</div>
+                    <h3 class="mt-4 font-semibold text-slate-900">Controle</h3>
+                    <p class="mt-2 text-sm text-slate-600">Estoque, vendas e financeiro sempre sob controle.</p>
+                </li>
+                <li class="text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-2xl" aria-hidden="true">&#128737;</div>
+                    <h3 class="mt-4 font-semibold text-slate-900">Segurança</h3>
+                    <p class="mt-2 text-sm text-slate-600">Seus dados protegidos e com histórico de alterações.</p>
+                </li>
+                <li class="text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-2xl" aria-hidden="true">&#127968;</div>
+                    <h3 class="mt-4 font-semibold text-slate-900">Multiempresa</h3>
+                    <p class="mt-2 text-sm text-slate-600">Ambientes separados para cada empresa ou filial.</p>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Como funciona -->
+    <section id="como-funciona" class="border-y border-slate-200 bg-white py-20">
+        <div class="mx-auto max-w-6xl px-4">
+            <h2 class="text-center text-3xl font-bold text-slate-900">Como funciona</h2>
+            <ol class="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-3">
+                <li class="text-center">
+                    <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 font-bold text-white" aria-hidden="true">1</span>
+                    <h3 class="mt-4 font-semibold text-slate-900">Fale conosco</h3>
+                    <p class="mt-2 text-sm text-slate-600">Envie seus dados pelo formulário de contato.</p>
+                </li>
+                <li class="text-center">
+                    <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 font-bold text-white" aria-hidden="true">2</span>
+                    <h3 class="mt-4 font-semibold text-slate-900">Configuramos tudo</h3>
+                    <p class="mt-2 text-sm text-slate-600">Nossa equipe cria e configura o ambiente da sua empresa.</p>
+                </li>
+                <li class="text-center">
+                    <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 font-bold text-white" aria-hidden="true">3</span>
+                    <h3 class="mt-4 font-semibold text-slate-900">Comece a usar</h3>
+                    <p class="mt-2 text-sm text-slate-600">Você recebe o acesso e começa a gerir o negócio no mesmo dia.</p>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- CTA final -->
+    <section class="py-20">
+        <div class="mx-auto max-w-3xl px-4 text-center">
+            <h2 class="text-3xl font-bold text-slate-900">Pronto para simplificar a gestão da sua empresa?</h2>
+            <p class="mt-4 text-slate-600">Fale conosco e descubra como o PDV pode ajudar o seu negócio hoje mesmo.</p>
+            <a href="{% url 'web:contato' %}" class="mt-8 inline-block rounded-lg bg-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500">
+                Fale conosco
+            </a>
+        </div>
+    </section>
+</main>
+
+<footer class="border-t border-slate-200 bg-white py-10">
+    <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-slate-500 sm:flex-row">
+        <p>&copy; {% now "Y" %} PDV. Todos os direitos reservados.</p>
+        <nav class="flex gap-6" aria-label="Links do rodapé">
+            <a href="#recursos" class="hover:text-indigo-600">Recursos</a>
+            <a href="{% url 'web:contato' %}" class="hover:text-indigo-600">Contato</a>
+            <a href="/login/" class="hover:text-indigo-600">Entrar</a>
+        </nav>
+    </div>
+</footer>
+{% endblock %}

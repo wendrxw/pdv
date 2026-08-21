@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PDV — Gestão simples para o seu negócio{% endblock %}</title>
+    <meta name="description" content="{% block description %}Sistema completo para gestão de produtos, estoque, vendas e financeiro do seu negócio, em um único lugar.{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{{ request.get_host }} — Gestão simples para o seu negócio{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Controle produtos, estoque, vendas e financeiro em um único lugar.{% endblock %}">
+    <meta property="og:type" content="website">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+    {% block content %}{% endblock %}
+</body>
+</html>
