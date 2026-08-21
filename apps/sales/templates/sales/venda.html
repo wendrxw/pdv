@@ -1,0 +1,184 @@
+{% extends "sales/pdv_base.html" %}
+{% block pdv_title %}Venda #{{ venda.numero }}{% endblock %}
+
+{% block pdv_content %}
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+    <!-- Coluna esquerda: leitura e busca -->
+    <section class="lg:col-span-2 space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <label for="codigo" class="block text-sm font-semibold text-slate-600 mb-2">Código / nome do produto</label>
+            <input id="codigo" name="codigo" type="text" autofocus autocomplete="off"
+                   placeholder="Leia o código de barras ou digite…"
+                   class="w-full rounded-lg border border-slate-300 px-4 py-3 text-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none">
+            <ul id="resultados" class="mt-3 divide-y divide-slate-100 text-sm hidden"></ul>
+            <p class="text-xs text-slate-400 mt-2">Enter no campo busca e adiciona o primeiro resultado.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Desconto (R$)</h2>
+            <form method="post" class="flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="desconto">
+                <input name="desconto" type="number" step="0.01" min="0" max="{{ venda.subtotal }}" value="{{ venda.desconto }}"
+                       class="w-full rounded-lg border border-slate-300 px-4 py-3 text-lg">
+                <button type="submit" class="rounded-lg bg-slate-800 px-4 py-3 font-medium text-white hover:bg-slate-700">Aplicar</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl border border-red-100 p-5">
+            <form method="post" onsubmit="return confirm('Cancelar a venda inteira?');">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="cancelar">
+                <input name="motivo" type="text" placeholder="Motivo do cancelamento"
+                       class="w-full rounded-lg border border-slate-300 px-4 py-2 mb-2 text-sm">
+                <button type="submit" class="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-3 font-bold text-red-700 hover:bg-red-100">Cancelar venda</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Coluna direita: carrinho, totais, pagamento -->
+    <section class="lg:col-span-3 space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <table class="min-w-full divide-y divide-slate-100 text-base">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                        <th class="px-4 py-3">Produto</th>
+                        <th class="px-4 py-3">Qtd.</th>
+                        <th class="px-4 py-3">Preço</th>
+                        <th class="px-4 py-3">Subtotal</th>
+                        <th class="px-4 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in itens %}
+                        <tr>
+                            <td class="px-4 py-3">{{ item.produto.nome }}</td>
+                            <td class="px-4 py-3">{{ item.quantidade }}</td>
+                            <td class="px-4 py-3">R$ {{ item.preco_unitario }}</td>
+                            <td class="px-4 py-3 font-semibold">R$ {{ item.subtotal }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="remover_item">
+                                    <input type="hidden" name="item" value="{{ item.uuid }}">
+                                    <button type="submit" class="text-red-600 hover:underline text-sm font-medium">remover</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">Carrinho vazio — leia um produto para começar.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-slate-900 text-white rounded-xl p-6">
+            <div class="grid grid-cols-3 gap-4 items-end">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Subtotal</p>
+                    <p class="text-xl font-semibold">R$ {{ venda.subtotal }}</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Desconto</p>
+                    <p class="text-xl font-semibold">R$ {{ venda.desconto }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs uppercase tracking-wide text-emerald-400">TOTAL</p>
+                    <p class="text-5xl font-black text-emerald-400 leading-none">R$ {{ venda.total }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Pagamentos</h2>
+            {% for pagamento in pagamentos %}
+                <div class="flex justify-between text-sm border-b border-slate-100 pb-2">
+                    <span>{{ pagamento.forma_pagamento.nome }}</span>
+                    <span class="font-semibold">R$ {{ pagamento.valor }}</span>
+                </div>
+            {% empty %}
+                <p class="text-sm text-slate-400">Nenhum pagamento registrado.</p>
+            {% endfor %}
+            <p class="text-right text-sm {% if falta > 0 %}text-amber-600{% else %}text-emerald-600{% endif %} font-semibold">
+                {% if falta > 0 %}Falta R$ {{ falta }}{% else %}Total pago ✓{% endif %}
+            </p>
+
+            <form method="post" class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="pagamento">
+                {{ pagamento_form.forma_pagamento }}
+                <input name="valor" type="number" step="0.01" min="0.01" placeholder="Valor" value="{{ falta|stringformat:'s' }}"
+                       class="rounded-lg border border-slate-300 px-3 py-3 text-lg sm:col-span-1">
+                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700">Adicionar</button>
+            </form>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="finalizar">
+                <button type="submit" {% if falta != 0 or itens|length == 0 %}disabled{% endif %}
+                        class="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-5 text-xl font-black text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
+                    FINALIZAR VENDA
+                </button>
+            </form>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    var campo = document.getElementById('codigo');
+    var lista = document.getElementById('resultados');
+    var timer = null;
+
+    function adicionar(uuid) {
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = window.location.href;
+        form.innerHTML = '{% csrf_token %}'
+            + '<input type="hidden" name="acao" value="add_item">'
+            + '<input type="hidden" name="produto" value="' + uuid + '">'
+            + '<input type="hidden" name="quantidade" value="1">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function buscar() {
+        var termo = campo.value.trim();
+        if (!termo) { lista.classList.add('hidden'); return; }
+        fetch('{% url "sales:produto_busca" %}?q=' + encodeURIComponent(termo))
+            .then(function (r) { return r.json(); })
+            .then(function (dados) {
+                lista.innerHTML = '';
+                dados.resultados.forEach(function (p) {
+                    var li = document.createElement('li');
+                    li.className = 'py-2 cursor-pointer hover:text-emerald-600';
+                    li.textContent = p.nome + ' · R$ ' + p.preco;
+                    li.addEventListener('click', function () { adicionar(p.uuid); });
+                    lista.appendChild(li);
+                });
+                lista.classList.toggle('hidden', dados.resultados.length === 0);
+            });
+    }
+
+    campo.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(buscar, 250);
+    });
+
+    // Leitor USB HID: código completo + Enter → adiciona direto.
+    campo.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            fetch('{% url "sales:produto_busca" %}?q=' + encodeURIComponent(campo.value.trim()))
+                .then(function (r) { return r.json(); })
+                .then(function (dados) {
+                    if (dados.resultados.length > 0) {
+                        adicionar(dados.resultados[0].uuid);
+                    }
+                });
+        }
+    });
+})();
+</script>
+{% endblock %}

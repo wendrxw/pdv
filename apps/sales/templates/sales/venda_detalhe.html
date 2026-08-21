@@ -1,0 +1,71 @@
+{% extends "sales/pdv_base.html" %}
+{% block pdv_title %}Venda #{{ venda.numero }}{% endblock %}
+
+{% block pdv_content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Venda #{{ venda.numero }}</h1>
+        <p class="text-sm text-slate-500">
+            {{ venda.get_status_display }} · {{ venda.data_abertura|date:"d/m/Y H:i" }}
+            {% if venda.data_finalizacao %} · finalizada {{ venda.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}
+            · operador {{ venda.operador.get_full_name|default:venda.operador.username }}
+        </p>
+    </div>
+    <a href="{% url 'sales:vendas' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Voltar</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <section class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Itens</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-6 py-3">Produto</th><th class="px-6 py-3">Qtd.</th><th class="px-6 py-3">Preço</th><th class="px-6 py-3">Subtotal</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in itens %}
+                        <tr>
+                            <td class="px-6 py-3">{{ item.produto.nome }}</td>
+                            <td class="px-6 py-3">{{ item.quantidade }}</td>
+                            <td class="px-6 py-3">R$ {{ item.preco_unitario }}</td>
+                            <td class="px-6 py-3 font-semibold">R$ {{ item.subtotal }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Pagamentos</h2>
+            <ul class="px-6 py-4 divide-y divide-slate-100 text-sm">
+                {% for pagamento in pagamentos %}
+                    <li class="py-2 flex justify-between">
+                        <span>{{ pagamento.forma_pagamento.nome }}</span>
+                        <span class="font-semibold">R$ {{ pagamento.valor }}</span>
+                    </li>
+                {% empty %}
+                    <li class="text-slate-400">Sem pagamentos.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+
+    <aside class="space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-2 text-sm">
+            <p class="flex justify-between"><span class="text-slate-500">Subtotal</span><span>R$ {{ venda.subtotal }}</span></p>
+            <p class="flex justify-between"><span class="text-slate-500">Desconto</span><span>R$ {{ venda.desconto }}</span></p>
+            <p class="flex justify-between text-lg font-bold border-t pt-2"><span>Total</span><span>R$ {{ venda.total }}</span></p>
+        </div>
+
+        {% if venda.status == "FINALIZADA" or venda.status == "ABERTA" %}
+            <form method="post" onsubmit="return confirm('Cancelar a venda e devolver o estoque?');"
+                  class="bg-white rounded-xl border border-red-100 p-6">
+                {% csrf_token %}
+                <label class="block text-sm text-slate-600 mb-1">Justificativa do cancelamento</label>
+                <textarea name="motivo" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-2"></textarea>
+                <button type="submit" class="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-2 font-bold text-red-700 hover:bg-red-100">Cancelar venda</button>
+            </form>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

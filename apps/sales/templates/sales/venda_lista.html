@@ -1,0 +1,57 @@
+{% extends "sales/pdv_base.html" %}
+{% block pdv_title %}Vendas{% endblock %}
+
+{% block pdv_content %}
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold text-slate-900">Histórico de vendas</h1>
+    <a href="{% url 'sales:pdv' %}" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Ir para o caixa</a>
+</div>
+
+<form method="get" class="flex flex-wrap gap-2 mb-4">
+    <input name="q" value="{{ busca }}" placeholder="Número ou cliente" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todos os status</option>
+        {% for valor, label in statuses %}
+            <option value="{{ valor }}" {% if status == valor %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white">Filtrar</button>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-100 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-6 py-3">Nº</th>
+                <th class="px-6 py-3">Data</th>
+                <th class="px-6 py-3">Operador</th>
+                <th class="px-6 py-3">Cliente</th>
+                <th class="px-6 py-3">Total</th>
+                <th class="px-6 py-3">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for venda in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-3 font-semibold"><a href="{% url 'sales:venda_detalhe' venda.uuid %}" class="text-indigo-600 hover:underline">#{{ venda.numero }}</a></td>
+                    <td class="px-6 py-3">{{ venda.data_abertura|date:"d/m H:i" }}</td>
+                    <td class="px-6 py-3">{{ venda.operador.get_full_name|default:venda.operador.username }}</td>
+                    <td class="px-6 py-3">{{ venda.cliente_nome|default:"—" }}</td>
+                    <td class="px-6 py-3 font-semibold">R$ {{ venda.total }}</td>
+                    <td class="px-6 py-3">{{ venda.get_status_display }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="px-6 py-10 text-center text-slate-400">Nenhuma venda encontrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex gap-2 text-sm">
+        {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}&status={{ status }}&q={{ busca }}" class="rounded border px-3 py-1 hover:bg-slate-50">Anterior</a>{% endif %}
+        <span class="px-3 py-1 text-slate-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}&status={{ status }}&q={{ busca }}" class="rounded border px-3 py-1 hover:bg-slate-50">Próxima</a>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}

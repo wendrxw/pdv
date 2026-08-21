@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{% block pdv_title %}PDV{% endblock %} — PDV{% endblock %}
+
+{% block content %}
+<header class="bg-slate-900 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 text-sm">
+        <div class="flex items-center gap-5">
+            <a href="/" class="font-bold text-emerald-400">PDV</a>
+            <span class="text-slate-300">{{ user.get_full_name|default:user.username }}</span>
+        </div>
+        <nav class="flex items-center gap-4">
+            <a href="{% url 'sales:pdv' %}" class="hover:text-emerald-400">Caixa</a>
+            <a href="{% url 'sales:vendas' %}" class="hover:text-emerald-400">Vendas</a>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-slate-400 hover:text-red-400">Sair</button>
+            </form>
+        </nav>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+    {% if messages %}
+        <div class="mb-4 space-y-2">
+            {% for message in messages %}
+                <div class="rounded-lg px-4 py-3 text-sm font-medium
+                    {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+                    {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+                    {% else %}bg-indigo-50 text-indigo-800 border border-indigo-200{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% block pdv_content %}{% endblock %}
+</main>
+{% endblock %}
