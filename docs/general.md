@@ -7414,3 +7414,1286 @@ Prioridades:
 7. Performance
 8. Experiência do usuário
 9. Design
+
+
+# FLUXO OFICIAL DE DESENVOLVIMENTO DO PROJETO
+# Git + Tasks + Branches + Pull Requests
+
+REPOSITÓRIO:
+
+    https://github.com/wendrxw/pdv
+
+O projeto utiliza GitHub como sistema oficial de versionamento.
+
+O GitHub CLI (gh) já está configurado e autenticado na máquina de trabalho.
+
+O agent deverá seguir rigorosamente o fluxo definido neste documento.
+
+==================================================
+1. REGRA FUNDAMENTAL
+==================================================
+
+NUNCA trabalhar diretamente na branch:
+
+    main
+
+A branch `main` representa código estável/revisado.
+
+Toda implementação deverá ocorrer em uma branch própria.
+
+Fluxo obrigatório:
+
+    main
+      ↓
+    nova branch
+      ↓
+    implementação
+      ↓
+    testes
+      ↓
+    documentação
+      ↓
+    commit
+      ↓
+    push
+      ↓
+    Pull Request
+      ↓
+    revisão humana
+      ↓
+    aguardando aprovação
+
+O agent NÃO deve fazer merge do PR.
+
+O agent NÃO deve aprovar o próprio PR.
+
+O agent NÃO deve alterar a main diretamente.
+
+
+==================================================
+2. TASKS
+==================================================
+
+Todas as tarefas do projeto ficarão dentro de:
+
+    tasks/
+
+Cada arquivo dentro de `tasks/` representa uma task de implementação.
+
+Exemplo:
+
+    tasks/
+        001-multi-tenancy.md
+        002-clientes.md
+        003-produtos.md
+        004-estoque.md
+        005-financeiro.md
+
+Antes de iniciar uma implementação, o agent deverá localizar a task correspondente.
+
+Se a task não existir:
+
+    NÃO inventar silenciosamente uma task.
+
+Informar que a task precisa ser criada.
+
+Se o usuário solicitar explicitamente a implementação sem criar o arquivo,
+o agent poderá criar a task seguindo o padrão do projeto.
+
+
+==================================================
+3. UMA TASK = UMA BRANCH
+==================================================
+
+Cada task deverá possuir sua própria branch.
+
+Exemplo:
+
+    Task:
+    tasks/003-produtos.md
+
+Branch:
+
+    feat/003-produtos
+
+ou, dependendo da natureza:
+
+    fix/003-produtos
+    refactor/003-produtos
+    docs/003-produtos
+    chore/003-produtos
+
+Preferir:
+
+    feat/<task-id>-<descricao>
+
+quando for uma nova funcionalidade.
+
+A branch deverá sempre ser criada a partir da versão mais recente da:
+
+    main
+
+
+==================================================
+4. ATUALIZAR MAIN ANTES DA BRANCH
+==================================================
+
+Antes de criar uma nova branch:
+
+1. verificar o estado do working tree;
+2. verificar a branch atual;
+3. atualizar referências remotas;
+4. obter a versão mais recente da main.
+
+Fluxo conceitual:
+
+    git status
+
+    git fetch origin
+
+    git checkout main
+
+    git pull --ff-only origin main
+
+Somente depois:
+
+    git checkout -b feat/<task>
+
+
+==================================================
+5. NÃO USAR CÓDIGO DE OUTRA BRANCH
+==================================================
+
+Cada task deverá começar a partir da:
+
+    origin/main
+
+Não criar uma nova task baseada em outra feature branch.
+
+Exemplo ERRADO:
+
+    feat/produtos
+          ↓
+    feat/estoque
+
+Isso cria dependência entre branches.
+
+Preferir:
+
+    main
+      ├── feat/produtos
+      └── feat/estoque
+
+Assim os PRs permanecem independentes.
+
+
+==================================================
+6. ISOLAMENTO DAS TASKS
+==================================================
+
+Cada branch deve conter somente as alterações relacionadas à sua task.
+
+Não incluir:
+
+- alterações não relacionadas;
+- refactors oportunistas;
+- mudanças de estilo aleatórias;
+- arquivos temporários;
+- código de outra task;
+- mudanças de configuração sem relação;
+- correções não solicitadas.
+
+Se durante a implementação for encontrada outra melhoria:
+
+    NÃO implementar automaticamente.
+
+Registrar a necessidade e informar o usuário.
+
+Se for uma correção obrigatória para concluir a task atual,
+ela poderá ser implementada, mas deverá ser documentada no PR.
+
+
+==================================================
+7. ANTES DE COMEÇAR
+==================================================
+
+Antes de implementar uma task:
+
+1. ler completamente a task;
+2. analisar o estado atual do projeto;
+3. analisar models existentes;
+4. analisar views;
+5. analisar services;
+6. analisar templates;
+7. analisar testes;
+8. analisar configurações;
+9. analisar documentação;
+10. verificar se existe implementação parcial;
+11. verificar dependências com outras tasks.
+
+Depois disso, elaborar mentalmente o plano de implementação.
+
+Se houver uma ambiguidade que impeça a implementação correta:
+
+    PARAR
+
+e solicitar orientação ao usuário.
+
+Não inventar uma regra de negócio crítica.
+
+
+==================================================
+8. EXECUTAR A TASK POR COMPLETO
+==================================================
+
+O agent deve ser AUTÔNOMO durante a execução da task.
+
+Não parar após:
+
+    criar model
+
+ou:
+
+    criar migration
+
+ou:
+
+    implementar backend
+
+ou:
+
+    criar interface.
+
+A task só estará concluída quando todos os requisitos definidos nela
+estiverem implementados.
+
+O agent deverá cuidar de:
+
+- backend;
+- models;
+- migrations;
+- forms;
+- views;
+- services;
+- selectors;
+- URLs;
+- templates;
+- Tailwind;
+- JavaScript;
+- permissões;
+- segurança;
+- testes;
+- documentação;
+- Django Admin quando aplicável;
+- integração com funcionalidades existentes.
+
+
+==================================================
+9. NÃO PEDIR CONFIRMAÇÃO DESNECESSÁRIA
+==================================================
+
+O agent não deverá interromper o trabalho para perguntar coisas
+que já estejam definidas na task ou na arquitetura existente.
+
+Exemplo:
+
+Task diz:
+
+    "Criar cadastro de produtos."
+
+O agent deverá implementar:
+
+- model;
+- migration;
+- formulário;
+- view;
+- template;
+- URL;
+- validação;
+- testes;
+- documentação;
+
+sem perguntar se deve criar cada uma dessas partes individualmente.
+
+A responsabilidade do agent é concluir a task.
+
+
+==================================================
+10. QUANDO O AGENT DEVE ME AVISAR
+==================================================
+
+O agent deverá interromper e solicitar intervenção humana SOMENTE
+quando houver uma decisão que realmente dependa do usuário.
+
+Exemplos:
+
+- requisito contraditório;
+- decisão de negócio não especificada;
+- credencial necessária;
+- configuração externa necessária;
+- serviço externo indisponível;
+- necessidade de alterar arquitetura fundamental;
+- migração destrutiva;
+- operação que possa causar perda de dados;
+- conflito impossível de resolver sem decisão humana;
+- necessidade de alterar infraestrutura;
+- necessidade de adicionar uma dependência com impacto arquitetural relevante.
+
+Quando isso ocorrer:
+
+1. explicar claramente o problema;
+2. explicar o que já foi feito;
+3. explicar as opções;
+4. informar qual opção recomenda;
+5. aguardar minha decisão.
+
+Não continuar assumindo uma decisão crítica.
+
+
+==================================================
+11. ATUAÇÃO DO AGENT
+==================================================
+
+Se nenhuma intervenção humana for necessária:
+
+    o agent deve continuar trabalhando até finalizar a task.
+
+Não parar simplesmente porque uma etapa intermediária foi concluída.
+
+O objetivo é entregar:
+
+    código implementado
+    +
+    testes
+    +
+    documentação
+    +
+    commit
+    +
+    push
+    +
+    Pull Request
+
+
+==================================================
+12. TESTES
+==================================================
+
+Antes do commit:
+
+1. executar os testes relacionados à task;
+2. executar lint;
+3. executar formatters;
+4. executar verificações estáticas quando existentes;
+5. executar testes de integração quando aplicável;
+6. verificar migrations;
+7. verificar arquivos não rastreados.
+
+Se o projeto possuir comandos oficiais definidos,
+utilizar os comandos existentes.
+
+Não inventar uma nova ferramenta de lint/format sem necessidade.
+
+
+==================================================
+13. TESTES DE REGRESSÃO
+==================================================
+
+Após implementar a task:
+
+    executar os testes da task
+
+e:
+
+    executar a suíte existente relevante.
+
+Se a suíte completa for razoavelmente executável,
+executá-la também.
+
+Se houver testes falhando antes da implementação:
+
+    identificar se são preexistentes.
+
+Não mascarar testes quebrados.
+
+Não alterar testes apenas para fazer o CI passar,
+a menos que o teste esteja incorreto devido à mudança implementada.
+
+
+==================================================
+14. MIGRATIONS
+==================================================
+
+Quando houver alteração de models:
+
+1. criar migrations;
+2. verificar migrations;
+3. executar migrations localmente;
+4. testar aplicação;
+5. garantir que as migrations estejam incluídas no commit.
+
+Nunca editar migrations antigas já aplicadas em ambientes compartilhados
+sem uma justificativa clara.
+
+Preferir novas migrations.
+
+
+==================================================
+15. DOCUMENTAÇÃO
+==================================================
+
+Para cada implementação importante, criar documentação dentro de:
+
+    docs/
+
+A documentação deve explicar o funcionamento da implementação.
+
+Exemplos:
+
+    docs/multi-tenancy.md
+    docs/financial.md
+    docs/inventory.md
+    docs/products.md
+    docs/clients.md
+    docs/authentication.md
+
+Não criar documentação inútil apenas para cumprir uma regra.
+
+Documentar decisões arquiteturais e comportamentos relevantes.
+
+
+==================================================
+16. DOCUMENTAÇÃO MÍNIMA
+==================================================
+
+Cada documentação importante deve explicar, quando aplicável:
+
+- objetivo;
+- arquitetura;
+- fluxo;
+- models envolvidos;
+- regras de negócio;
+- segurança;
+- permissões;
+- integração com outros módulos;
+- como utilizar;
+- limitações;
+- decisões arquiteturais;
+- exemplos.
+
+Se houver uma decisão importante que futuros desenvolvedores
+precisem conhecer:
+
+    documentá-la.
+
+
+==================================================
+17. DOCUMENTAÇÃO DA TASK
+==================================================
+
+Quando apropriado, atualizar também a documentação relacionada
+à própria task.
+
+Exemplo:
+
+Task:
+
+    tasks/005-financeiro.md
+
+Implementação:
+
+    docs/financial.md
+
+A documentação não deve substituir a task.
+
+A task descreve:
+
+    o que deve ser feito.
+
+A documentação descreve:
+
+    como a implementação funciona.
+
+
+==================================================
+18. ATUALIZAÇÃO DAS TASKS
+==================================================
+
+Após concluir uma task, atualizar o arquivo correspondente em:
+
+    tasks/
+
+para indicar o estado da implementação, caso o padrão do projeto
+permita isso.
+
+Exemplo:
+
+    Status: concluída
+
+ou:
+
+    [x] Implementação
+    [x] Testes
+    [x] Documentação
+    [x] Pull Request
+
+Não apagar o histórico da task.
+
+
+==================================================
+19. GIT STATUS
+==================================================
+
+Antes de iniciar:
+
+    git status
+
+Antes de commit:
+
+    git status
+
+Depois do commit:
+
+    git status
+
+Antes do push:
+
+    git status
+
+O working tree deve estar limpo após o commit,
+exceto arquivos deliberadamente não rastreados que não pertençam
+ao projeto.
+
+
+==================================================
+20. COMMITS
+==================================================
+
+Criar commits concisos, maduros e bem detalhados.
+
+O commit deve representar uma unidade lógica de implementação.
+
+Evitar:
+
+    "update"
+    "fix"
+    "changes"
+    "wip"
+    "stuff"
+    "implementação"
+
+Preferir Conventional Commits quando o projeto não possuir padrão próprio.
+
+Exemplo:
+
+    feat(finance): add accounts receivable workflow
+
+ou:
+
+    feat(products): add tenant-aware product management
+
+
+==================================================
+21. COMMIT BODY
+==================================================
+
+Quando a implementação for relevante, utilizar corpo no commit.
+
+Exemplo:
+
+    feat(finance): add accounts receivable workflow
+
+    - add receivable and installment models
+    - implement payment registration
+    - enforce tenant isolation
+    - add financial transaction handling
+    - add automated tests
+    - document receivables workflow
+
+O commit deve ser:
+
+- claro;
+- objetivo;
+- profissional;
+- informativo.
+
+Não escrever textos excessivamente longos.
+
+
+==================================================
+22. NÃO CRIAR COMMITS DESNECESSÁRIOS
+==================================================
+
+Evitar dezenas de commits pequenos como:
+
+    add model
+    fix model
+    fix test
+    fix template
+    fix typo
+    final fix
+    final final fix
+
+Preferir organizar o trabalho e produzir commits significativos.
+
+Se a task for grande e possuir etapas claramente independentes,
+é permitido utilizar múltiplos commits lógicos.
+
+Porém, todos devem permanecer relacionados à mesma task.
+
+
+==================================================
+23. NÃO ALTERAR HISTÓRICO DESNECESSARIAMENTE
+==================================================
+
+Não utilizar:
+
+    git reset --hard
+
+sem necessidade.
+
+Não reescrever histórico remoto.
+
+Não utilizar:
+
+    git push --force
+
+na main.
+
+Evitar force push em branches que já estejam sendo revisadas,
+a menos que seja absolutamente necessário e seguro.
+
+
+==================================================
+24. BRANCH NAME
+==================================================
+
+O nome da branch deve ser previsível.
+
+Formato:
+
+    <tipo>/<task-id>-<descricao>
+
+Exemplos:
+
+    feat/001-multi-tenancy
+    feat/002-clients
+    feat/003-products
+    feat/004-inventory
+    feat/005-finance
+
+Para correções:
+
+    fix/012-finance-calculation
+
+Para documentação:
+
+    docs/015-architecture
+
+Para refatoração:
+
+    refactor/020-financial-services
+
+
+==================================================
+25. UMA BRANCH POR TASK
+==================================================
+
+NUNCA utilizar a mesma branch para duas tasks independentes.
+
+Exemplo:
+
+ERRADO:
+
+    feat/001-platform
+
+contendo:
+
+- clientes;
+- produtos;
+- financeiro;
+- estoque.
+
+CORRETO:
+
+    feat/001-clients
+    feat/002-products
+    feat/003-inventory
+    feat/004-finance
+
+
+==================================================
+26. DEPENDÊNCIAS ENTRE TASKS
+==================================================
+
+Sempre que possível, cada branch deve nascer da:
+
+    main
+
+Porém, algumas tasks podem depender de outra.
+
+Exemplo:
+
+    Task 001:
+    multi-tenancy
+
+    Task 002:
+    produtos
+
+Se produtos depender obrigatoriamente da implementação da Task 001,
+o agent deverá verificar se a Task 001 já foi incorporada à main.
+
+Se NÃO foi incorporada:
+
+    NÃO criar uma branch baseada em feat/001.
+
+Informar:
+
+    "A Task 002 depende da Task 001, que ainda não está na main."
+
+Aguardar a integração da Task 001 antes de criar a branch da Task 002.
+
+Isso evita branches encadeadas e PRs com dependências ocultas.
+
+
+==================================================
+27. CONFLITOS ENTRE BRANCHES
+==================================================
+
+O objetivo é que não existam conflitos entre branches.
+
+Para isso:
+
+- cada branch nasce da main;
+- cada task deve ser isolada;
+- não modificar arquivos sem relação;
+- evitar alterações globais desnecessárias;
+- não misturar refactors com features.
+
+Antes de criar uma branch:
+
+    atualizar main.
+
+Antes de abrir o PR:
+
+    verificar se a branch está atualizada em relação à main.
+
+Se houver conflito:
+
+    tentar resolver de forma segura.
+
+Se a resolução exigir uma decisão arquitetural:
+
+    solicitar intervenção humana.
+
+
+==================================================
+28. PR
+==================================================
+
+Após concluir a task:
+
+1. executar testes;
+2. revisar código;
+3. revisar documentação;
+4. verificar git diff;
+5. criar commit;
+6. fazer push;
+7. criar Pull Request.
+
+Utilizar GitHub CLI:
+
+    gh pr create
+
+O PR deve apontar para:
+
+    main
+
+
+==================================================
+29. TÍTULO DO PR
+==================================================
+
+O título deve ser claro e conciso.
+
+Exemplo:
+
+    feat(finance): implement accounts receivable module
+
+ou:
+
+    feat(products): implement tenant-aware product management
+
+
+==================================================
+30. DESCRIÇÃO DO PR
+==================================================
+
+O PR deverá conter:
+
+## Resumo
+
+Explique o que foi implementado.
+
+## Alterações
+
+Liste as principais mudanças.
+
+## Arquitetura
+
+Explique decisões importantes.
+
+## Segurança
+
+Explique mudanças relacionadas a permissões/multi-tenancy.
+
+## Testes
+
+Liste os testes executados.
+
+## Documentação
+
+Indique os documentos criados/alterados.
+
+## Como testar
+
+Explique como validar a implementação.
+
+## Observações
+
+Liste limitações ou decisões relevantes.
+
+Exemplo:
+
+    ## Resumo
+
+    Implementa o módulo de contas a receber com suporte a parcelas.
+
+    ## Alterações
+
+    - adiciona models de contas e parcelas
+    - implementa recebimento
+    - adiciona isolamento por tenant
+    - adiciona auditoria
+    - adiciona testes
+
+    ## Testes
+
+    - pytest
+    - migrations
+    - lint
+
+    ## Documentação
+
+    - docs/financial.md
+
+
+==================================================
+31. PR NÃO DEVE SER MERGEADO
+==================================================
+
+Após criar o PR:
+
+    NÃO fazer merge.
+
+O PR será revisado pelo proprietário do projeto.
+
+O fluxo termina em:
+
+    Pull Request aberto
+    +
+    código pronto para revisão
+
+
+==================================================
+32. RESPONSABILIDADE DA REVISÃO
+==================================================
+
+Após abrir o PR:
+
+    EU ANALISAREI:
+
+    - código;
+    - arquitetura;
+    - segurança;
+    - testes;
+    - documentação;
+    - UX;
+    - regras de negócio.
+
+O agent não deve considerar a task "aprovada"
+simplesmente porque:
+
+    testes passaram.
+
+A aprovação é humana.
+
+
+==================================================
+33. FEEDBACK DA REVISÃO
+==================================================
+
+Se eu solicitar alterações no PR:
+
+1. continuar utilizando a mesma branch;
+2. implementar as correções;
+3. executar testes novamente;
+4. criar novo commit lógico;
+5. fazer push;
+6. atualizar o PR.
+
+Não criar uma nova branch para cada rodada de revisão.
+
+
+==================================================
+34. NOVOS COMMITS APÓS REVIEW
+==================================================
+
+Se o feedback for:
+
+    "adicione validação de CPF"
+
+criar um commit relacionado à correção.
+
+Exemplo:
+
+    fix(clients): validate cpf before persistence
+
+Não alterar outras partes da aplicação.
+
+
+==================================================
+35. NÃO MERGEAR
+==================================================
+
+Mesmo após corrigir todos os comentários:
+
+    NÃO fazer merge.
+
+Aguardar aprovação humana.
+
+
+==================================================
+36. CI/CD
+==================================================
+
+Se o repositório possuir GitHub Actions:
+
+Após push:
+
+    verificar o status do CI.
+
+Se houver falha:
+
+    investigar.
+
+Se a falha for causada pelo código da task:
+
+    corrigir.
+
+Se for uma falha externa/preexistente:
+
+    informar no PR.
+
+Não ignorar falhas do CI.
+
+
+==================================================
+37. CODE REVIEW INTERNO
+==================================================
+
+Antes de criar o PR, o agent deve revisar o próprio diff.
+
+Executar algo equivalente a:
+
+    git diff main...HEAD
+
+Verificar:
+
+- arquivos alterados;
+- alterações inesperadas;
+- secrets;
+- debug;
+- prints;
+- comentários temporários;
+- código morto;
+- imports não utilizados;
+- migrations;
+- testes;
+- documentação.
+
+Não abrir PR com:
+
+    print()
+    debugger
+    TODO temporário
+    senha
+    token
+    .env
+    arquivos locais
+
+
+==================================================
+38. SEGREDOS
+==================================================
+
+NUNCA commitar:
+
+- passwords;
+- API keys;
+- tokens;
+- secrets;
+- .env;
+- credenciais;
+- certificados privados.
+
+Se um segredo aparecer no working tree:
+
+    parar
+
+e informar o usuário.
+
+
+==================================================
+39. ARQUIVOS GERADOS
+==================================================
+
+Não commitar:
+
+- __pycache__;
+- .pytest_cache;
+- .venv;
+- arquivos temporários;
+- logs;
+- builds;
+- arquivos do sistema;
+- dumps locais;
+- banco SQLite local, se não fizer parte do projeto.
+
+Respeitar o .gitignore existente.
+
+
+==================================================
+40. REVISÃO DE ESCOPO
+==================================================
+
+Antes do PR, comparar:
+
+    TASK
+
+contra:
+
+    IMPLEMENTAÇÃO
+
+Perguntar internamente:
+
+    "Tudo que a task pediu foi implementado?"
+
+E:
+
+    "Implementei algo que a task não pediu?"
+
+Se sim:
+
+    remover ou justificar.
+
+
+==================================================
+41. DEFINIÇÃO DE PRONTO
+==================================================
+
+Uma task só está pronta quando:
+
+[ ] Task analisada
+[ ] Branch criada a partir da main
+[ ] Implementação concluída
+[ ] Backend concluído
+[ ] Frontend concluído quando aplicável
+[ ] Testes criados
+[ ] Testes executados
+[ ] Migrations criadas/testadas
+[ ] Segurança verificada
+[ ] Multi-tenancy verificado
+[ ] Django Admin atualizado quando aplicável
+[ ] Documentação criada/atualizada
+[ ] Código revisado
+[ ] Git diff revisado
+[ ] Commit criado
+[ ] Push realizado
+[ ] PR criado
+[ ] CI verificado
+[ ] Nenhum conflito conhecido
+[ ] Nenhuma intervenção humana pendente
+
+Somente então considerar a task tecnicamente concluída.
+
+A task permanece aguardando:
+
+    revisão humana
+
+
+==================================================
+42. INTERVENÇÃO HUMANA
+==================================================
+
+Sempre que uma ação posterior depender de mim,
+deixar isso explícito.
+
+Exemplos:
+
+    "É necessária configuração manual de uma variável de ambiente."
+
+    "É necessário configurar o domínio."
+
+    "É necessário executar uma ação no provedor externo."
+
+    "É necessária decisão sobre a regra de negócio X."
+
+    "É necessária aprovação do PR."
+
+Não esconder dependências manuais.
+
+
+==================================================
+43. FINAL DA EXECUÇÃO
+==================================================
+
+Ao finalizar a task, informar de forma objetiva:
+
+    Task:
+    <nome>
+
+    Branch:
+    <branch>
+
+    Commit:
+    <commit>
+
+    Pull Request:
+    <PR>
+
+    Implementado:
+    <resumo>
+
+    Testes:
+    <testes executados>
+
+    Documentação:
+    <arquivos>
+
+    CI:
+    <status>
+
+    Intervenção necessária:
+    <sim/não>
+
+Se não houver intervenção:
+
+    "Nenhuma intervenção adicional é necessária.
+     O PR está pronto para revisão."
+
+
+==================================================
+44. FLUXO COMPLETO
+==================================================
+
+O fluxo oficial é:
+
+    TASK
+      ↓
+    ANALISAR PROJETO
+      ↓
+    ATUALIZAR MAIN
+      ↓
+    CRIAR BRANCH
+      ↓
+    IMPLEMENTAR TASK COMPLETA
+      ↓
+    TESTAR
+      ↓
+    DOCUMENTAR
+      ↓
+    REVISAR DIFF
+      ↓
+    COMMIT
+      ↓
+    PUSH
+      ↓
+    CI
+      ↓
+    CRIAR PR
+      ↓
+    AGUARDAR REVISÃO HUMANA
+
+NUNCA:
+
+    trabalhar diretamente na main
+
+NUNCA:
+
+    mergear o próprio PR
+
+NUNCA:
+
+    misturar duas tasks em uma branch
+
+NUNCA:
+
+    criar branch baseada em outra feature branch sem necessidade
+
+NUNCA:
+
+    ignorar testes quebrados
+
+NUNCA:
+
+    ignorar conflitos
+
+NUNCA:
+
+    esconder necessidade de intervenção humana
+
+
+==================================================
+45. PRINCÍPIO FINAL
+==================================================
+
+O agent é responsável por levar uma task:
+
+    do início
+
+até:
+
+    Pull Request pronto para revisão.
+
+O agent deve ser autônomo durante a implementação.
+
+O usuário deve ser envolvido apenas quando houver uma decisão,
+configuração ou ação que realmente exija intervenção humana.
+
+A responsabilidade final pela aprovação e merge pertence ao
+proprietário do projeto.
+
+A qualidade do código, testes, documentação, segurança,
+isolamento multi-tenant e organização do Git fazem parte da task.
+
+Não considerar uma task concluída simplesmente porque
+"o código funciona".
+
+Uma task concluída significa:
+
+    código
+    +
+    testes
+    +
+    documentação
+    +
+    segurança
+    +
+    commit
+    +
+    PR
+    +
+    CI
+    +
+    pronto para revisão humana.
