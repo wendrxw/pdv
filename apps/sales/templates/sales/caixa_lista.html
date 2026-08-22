@@ -1,0 +1,77 @@
+{% extends "sales/pdv_base.html" %}
+{% block pdv_title %}Caixas{% endblock %}
+
+{% block pdv_content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-6">Caixas</h1>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <section class="lg:col-span-2 space-y-4">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Abertos agora</h2>
+        {% for caixa in abertos %}
+            <a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="block bg-white rounded-xl border border-slate-200 p-4 hover:border-emerald-400">
+                {{ caixa.operador.get_full_name|default:caixa.operador.username }} ·
+                {{ caixa.conta_financeira.nome }} · aberto {{ caixa.data_abertura|date:"d/m H:i" }}
+                <span class="text-xs bg-emerald-100 text-emerald-700 rounded px-2 py-0.5 ml-2">{{ caixa.get_status_display }}</span>
+            </a>
+        {% empty %}
+            <p class="text-slate-400 text-sm">Nenhum caixa aberto.</p>
+        {% endfor %}
+    </section>
+
+    <aside class="bg-white rounded-xl border border-slate-200 p-6 h-fit">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Abrir novo caixa</h2>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm text-slate-600 mb-1">{{ form.conta_financeira.label }}</label>
+                {{ form.conta_financeira }}
+            </div>
+            <div>
+                <label class="block text-sm text-slate-600 mb-1">{{ form.saldo_inicial.label }}</label>
+                {{ form.saldo_inicial }}
+            </div>
+            <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700">Abrir caixa</button>
+        </form>
+    </aside>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto mt-8">
+    <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Histórico</h2>
+    <table class="min-w-full divide-y divide-slate-100 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-6 py-3">Abertura</th>
+                <th class="px-6 py-3">Operador</th>
+                <th class="px-6 py-3">Conta</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Esperado</th>
+                <th class="px-6 py-3">Informado</th>
+                <th class="px-6 py-3">Diferença</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for caixa in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-3"><a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="text-indigo-600 hover:underline">{{ caixa.data_abertura|date:"d/m/Y H:i" }}</a></td>
+                    <td class="px-6 py-3">{{ caixa.operador.get_full_name|default:caixa.operador.username }}</td>
+                    <td class="px-6 py-3">{{ caixa.conta_financeira.nome }}</td>
+                    <td class="px-6 py-3">{{ caixa.get_status_display }}</td>
+                    <td class="px-6 py-3">R$ {{ caixa.saldo_final_esperado|default:"—" }}</td>
+                    <td class="px-6 py-3">R$ {{ caixa.saldo_final_informado|default:"—" }}</td>
+                    <td class="px-6 py-3 {% if caixa.diferenca and caixa.diferenca != 0 %}text-red-600{% endif %}">R$ {{ caixa.diferenca|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400">Nenhum caixa registrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex gap-2 text-sm">
+        {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}" class="rounded border px-3 py-1 hover:bg-slate-50">Anterior</a>{% endif %}
+        <span class="px-3 py-1 text-slate-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}" class="rounded border px-3 py-1 hover:bg-slate-50">Próxima</a>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}

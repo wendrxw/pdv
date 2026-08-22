@@ -1,0 +1,124 @@
+{% extends "sales/pdv_base.html" %}
+{% block pdv_title %}Caixa · {{ caixa.conta_financeira.nome }}{% endblock %}
+
+{% block pdv_content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Caixa · {{ caixa.conta_financeira.nome }}</h1>
+        <p class="text-sm text-slate-500">
+            {{ caixa.get_status_display }} · operador {{ caixa.operador.get_full_name|default:caixa.operador.username }}
+            · aberto {{ caixa.data_abertura|date:"d/m/Y H:i" }}
+            {% if caixa.data_fechamento %}· fechado {{ caixa.data_fechamento|date:"d/m/Y H:i" }}{% endif %}
+        </p>
+    </div>
+    <a href="{% url 'sales:caixas' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Voltar</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Troco inicial</p>
+        <p class="text-2xl font-bold">R$ {{ caixa.saldo_inicial }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Saldo esperado</p>
+        <p class="text-2xl font-bold">R$ {{ esperado }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Diferença (informado − esperado)</p>
+        <p class="text-2xl font-bold {% if caixa.diferenca and caixa.diferenca != 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+            R$ {{ caixa.diferenca|default:"—" }}
+        </p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="space-y-4">
+        {% if caixa.status == "ABERTO" %}
+            <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Suprimento / Sangria</h2>
+                <form method="post" action="{% url 'sales:movimentacao_caixa' caixa.uuid %}" class="flex gap-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="tipo" value="SUPRIMENTO">
+                    {{ mov_form.valor }}
+                    <input name="motivo" placeholder="Motivo" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white whitespace-nowrap">Suprimento</button>
+                </form>
+                <form method="post" action="{% url 'sales:movimentacao_caixa' caixa.uuid %}" class="flex gap-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="tipo" value="SANGRIA">
+                    <input name="valor" type="number" step="0.01" min="0.01" placeholder="Valor" required
+                           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <input name="motivo" placeholder="Motivo" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 font-medium text-white whitespace-nowrap">Sangria</button>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-6">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Fechar caixa</h2>
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">{{ form.saldo_informado.label }}</label>
+                        {{ form.saldo_informado }}
+                        {% if form.saldo_informado.errors %}<p class="text-sm text-red-600 mt-1">{{ form.saldo_informado.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">{{ form.observacao.label }}</label>
+                        {{ form.observacao }}
+                    </div>
+                    <button type="submit" class="w-full rounded-lg bg-slate-900 px-4 py-3 font-bold text-white hover:bg-slate-800">Fechar caixa</button>
+                </form>
+            </div>
+        {% elif caixa.observacao_fechamento %}
+            <div class="bg-white rounded-xl border border-slate-200 p-6">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2">Observação do fechamento</h2>
+                <p class="text-sm text-slate-700">{{ caixa.observacao_fechamento }}</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Movimentações do turno</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-6 py-3">Tipo</th><th class="px-6 py-3">Valor</th><th class="px-6 py-3">Motivo</th><th class="px-6 py-3">Quando</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for mov in movimentacoes %}
+                        <tr>
+                            <td class="px-6 py-3">{{ mov.get_tipo_display }}</td>
+                            <td class="px-6 py-3">R$ {{ mov.valor }}</td>
+                            <td class="px-6 py-3 text-slate-500">{{ mov.motivo|default:"—" }}</td>
+                            <td class="px-6 py-3 text-slate-500">{{ mov.data_criacao|date:"d/m H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Sem suprimentos/sangrias.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Vendas deste caixa</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-6 py-3">Nº</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Total</th><th class="px-6 py-3">Status</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for venda in vendas %}
+                        <tr>
+                            <td class="px-6 py-3"><a href="{% url 'sales:venda_detalhe' venda.uuid %}" class="text-indigo-600 hover:underline">#{{ venda.numero }}</a></td>
+                            <td class="px-6 py-3">{{ venda.data_abertura|date:"d/m H:i" }}</td>
+                            <td class="px-6 py-3">R$ {{ venda.total }}</td>
+                            <td class="px-6 py-3">{{ venda.get_status_display }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Nenhuma venda neste caixa.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
