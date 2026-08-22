@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "apps.inventory.apps.InventoryConfig",
     "apps.financial.apps.FinancialConfig",
     "apps.sales.apps.SalesConfig",
+    "apps.fiscal.apps.FiscalConfig",
     "apps.audit.apps.AuditConfig",
     "apps.web.apps.WebConfig",
 ]
@@ -160,6 +161,14 @@ _FRONTEND_STATIC = BASE_DIR / "frontend" / "static"
 STATICFILES_DIRS = [_FRONTEND_STATIC] if _FRONTEND_STATIC.exists() else []
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Módulo fiscal NFC-e (tasks/TSK_00008.md).
+# Produção exige configuração explícita; homologação é o padrão seguro.
+SEFAZ_UF = env("SEFAZ_UF", "SP")
+SEFAZ_AMBIENTE = env("SEFAZ_AMBIENTE", "HOMOLOGACAO")
+SEFAZ_TIMEOUT = env_int("SEFAZ_TIMEOUT", 30)
+# Senha do certificado A1 NUNCA vai para o banco ou logs.
+SEFAZ_CERTIFICATE_PASSWORD = os.environ.get("SEFAZ_CERTIFICATE_PASSWORD", "")
 
 # Segurança (produção deve definir DJANGO_DEBUG=False e as opções abaixo via env)
 SECURE_BROWSER_XSS_FILTER = True
