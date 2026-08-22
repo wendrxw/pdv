@@ -1,0 +1,73 @@
+{% extends "app_base.html" %}
+{% block app_title %}{{ conta.descricao }}{% endblock %}
+
+{% block app_content %}
+<div class="max-w-3xl">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-slate-900">{{ conta.descricao }}</h1>
+        <a href="{% url 'financial:receber' %}" class="text-sm text-indigo-600 hover:text-indigo-800">&larr; Voltar</a>
+    </div>
+
+    <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white rounded-xl border border-slate-200 p-6 mb-6 text-sm">
+        <div><dt class="text-slate-500">Cliente</dt><dd class="font-medium">{{ conta.cliente_nome|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Total</dt><dd class="font-bold">{{ conta.valor_total }}</dd></div>
+        <div><dt class="text-slate-500">Recebido</dt><dd class="font-bold text-emerald-600">{{ conta.valor_recebido }}</dd></div>
+        <div><dt class="text-slate-500">Pendente</dt><dd class="font-bold text-amber-600">{{ conta.valor_pendente }}</dd></div>
+    </dl>
+
+    {% if conta.status == 'ABERTA' or conta.status == 'PARCIAL' %}
+        <form method="post" class="mb-6">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="cancelar">
+            <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100">Cancelar conta</button>
+        </form>
+    {% endif %}
+
+    <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Parcelas</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr><th class="px-4 py-2">Nº</th><th class="px-4 py-2">Valor</th><th class="px-4 py-2">Vencimento</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Ação</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for parcela in parcelas %}
+                    <tr>
+                        <td class="px-4 py-3">{{ parcela.numero }}</td>
+                        <td class="px-4 py-3 font-medium">{{ parcela.valor }}</td>
+                        <td class="px-4 py-3">
+                            {{ parcela.data_vencimento|date:"d/m/Y" }}
+                            {% if parcela.vencida %}<span class="ml-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Vencida</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if parcela.status == 'RECEBIDA' %}
+                                <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Recebida {{ parcela.data_recebimento|date:"d/m/Y" }}</span>
+                            {% elif parcela.status == 'CANCELADA' %}
+                                <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
+                            {% else %}
+                                <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if parcela.status == 'PENDENTE' and conta.status != 'CANCELADA' %}
+                                <form method="post" class="flex items-center gap-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="receber_parcela">
+                                    <input type="hidden" name="parcela_uuid" value="{{ parcela.uuid }}">
+                                    <select name="conta_financeira" class="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                                        {% for destino in contas %}
+                                            <option value="{{ destino.pk }}">{{ destino.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">Receber</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Sem parcelas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

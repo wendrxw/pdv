@@ -1,0 +1,95 @@
+{% extends "app_base.html" %}
+{% block app_title %}{{ lancamento.descricao }}{% endblock %}
+
+{% block app_content %}
+<div class="max-w-3xl">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-slate-900">{{ lancamento.descricao }}</h1>
+        <a href="{% if tipo == 'entrada' %}{% url 'financial:entradas' %}{% else %}{% url 'financial:saidas' %}{% endif %}" class="text-sm text-indigo-600 hover:text-indigo-800">&larr; Voltar</a>
+    </div>
+
+    <dl class="grid grid-cols-2 gap-4 bg-white rounded-xl border border-slate-200 p-6 mb-6 text-sm">
+        <div><dt class="text-slate-500">Valor</dt><dd class="text-lg font-bold">{{ lancamento.valor }}</dd></div>
+        <div>
+            <dt class="text-slate-500">Status</dt>
+            <dd class="font-medium">
+                {% if lancamento.status == 'RECEBIDA' or lancamento.status == 'PAGA' %}
+                    <span class="text-emerald-600">{{ lancamento.get_status_display }}</span>
+                {% elif lancamento.status == 'CANCELADA' %}
+                    <span class="text-red-600">{{ lancamento.get_status_display }}</span>
+                {% else %}
+                    {{ lancamento.get_status_display }}
+                {% endif %}
+            </dd>
+        </div>
+        <div><dt class="text-slate-500">Conta financeira</dt><dd>{{ lancamento.conta_financeira.nome }}</dd></div>
+        <div><dt class="text-slate-500">Categoria</dt><dd>{{ lancamento.categoria|default:"—" }}</dd></div>
+        <div><dt class="text-slate-500">Competência</dt><dd>{{ lancamento.data_competencia|date:"d/m/Y" }}</dd></div>
+        {% if tipo == 'entrada' %}
+            <div><dt class="text-slate-500">Recebimento</dt><dd>{{ lancamento.data_recebimento|date:"d/m/Y"|default:"—" }}</dd></div>
+        {% else %}
+            <div><dt class="text-slate-500">Vencimento</dt><dd>{{ lancamento.data_vencimento|date:"d/m/Y" }}{% if lancamento.vencida %} <span class="text-amber-600">(vencida)</span>{% endif %}</dd></div>
+            <div><dt class="text-slate-500">Pagamento</dt><dd>{{ lancamento.data_pagamento|date:"d/m/Y"|default:"—" }}</dd></div>
+        {% endif %}
+        {% if lancamento.observacao %}<div class="col-span-2"><dt class="text-slate-500">Observação</dt><dd>{{ lancamento.observacao }}</dd></div>{% endif %}
+    </dl>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6 space-y-4">
+        {% if lancamento.status == 'PENDENTE' %}
+            <form method="post" class="flex flex-wrap items-end gap-3">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="{% if tipo == 'entrada' %}receber{% else %}pagar{% endif %}">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">{% if tipo == 'entrada' %}Receber em{% else %}Pagar com{% endif %} conta</label>
+                    <select name="conta_financeira" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        {% for conta in contas %}
+                            <option value="{{ conta.pk }}" {% if conta.pk == lancamento.conta_financeira_id %}selected{% endif %}>{{ conta.nome }} (saldo {{ conta.saldo_atual }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+                    {% if tipo == 'entrada' %}Registrar recebimento{% else %}Registrar pagamento{% endif %}
+                </button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="cancelar">
+                <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100">Cancelar lançamento</button>
+            </form>
+        {% elif lancamento.status == 'RECEBIDA' or lancamento.status == 'PAGA' %}
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="estornar">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Estornar — justificativa obrigatória</label>
+                    <textarea name="motivo" required rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </div>
+                <button type="submit" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">Confirmar estorno</button>
+            </form>
+        {% else %}
+            <p class="text-sm text-slate-400">Nenhuma ação disponível para este status.</p>
+        {% endif %}
+    </div>
+
+    <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Movimentações vinculadas</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr><th class="px-4 py-2">Data</th><th class="px-4 py-2">Tipo</th><th class="px-4 py-2">Valor</th><th class="px-4 py-2">Descrição</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for mov in movimentacoes %}
+                    <tr>
+                        <td class="px-4 py-2">{{ mov.data|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-2">{{ mov.get_tipo_display }}</td>
+                        <td class="px-4 py-2 font-medium">{{ mov.valor }}</td>
+                        <td class="px-4 py-2 text-slate-500">{{ mov.descricao }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">Nenhuma movimentação de caixa registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

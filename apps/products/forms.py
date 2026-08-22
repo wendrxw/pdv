@@ -1,0 +1,138 @@
+from django import forms
+
+from .barcode import BarcodeError, BarcodeService
+from .models import Categoria, Marca, Produto
+
+INPUT_CLASS = (
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 "
+    "placeholder-slate-400 focus:border-indigo-500 focus:outline-none "
+    "focus:ring-1 focus:ring-indigo-500"
+)
+
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ("nome", "descricao", "ativo")
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": INPUT_CLASS}),
+            "descricao": forms.Textarea(attrs={"class": INPUT_CLASS, "rows": 2}),
+        }
+
+
+class MarcaForm(forms.ModelForm):
+    class Meta:
+        model = Marca
+        fields = ("nome", "ativo")
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": INPUT_CLASS}),
+        }
+
+
+class ProdutoForm(forms.ModelForm):
+    """Formulário de produto com querysets restritos ao tenant."""
+
+    class Meta:
+        model = Produto
+        fields = (
+            "nome",
+            "sku",
+            "codigo_barras",
+            "categoria",
+            "marca",
+            "tamanho",
+            "unidade_medida",
+            "preco_custo",
+            "preco_venda",
+            "estoque_minimo",
+            "estoque_maximo",
+            "descricao",
+            "observacao",
+            "ativo",
+        )
+        widgets = {
+            "nome": forms.TextInput(
+                attrs={"class": INPUT_CLASS, "placeholder": "Nome do produto"}
+            ),
+            "sku": forms.TextInput(
+                attrs={"class": INPUT_CLASS, "placeholder": "Ex.: CAM-001-PRETO-M"}
+            ),
+            "codigo_barras": forms.TextInput(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "placeholder": "EAN-13 (deixe vazio para gerar)",
+                    "inputmode": "numeric",
+                    "maxlength": 13,
+                    "data-barcode-input": True,
+                }
+            ),
+            "tamanho": forms.TextInput(
+                attrs={"class": INPUT_CLASS, "placeholder": "Ex.: M, 500ml"}
+            ),
+            "preco_custo": forms.NumberInput(
+                attrs={"class": INPUT_CLASS, "step": "0.01"}
+            ),
+            "preco_venda": forms.NumberInput(
+                attrs={"class": INPUT_CLASS, "step": "0.01"}
+            ),
+            "estoque_minimo": forms.NumberInput(
+                attrs={"class": INPUT_CLASS, "step": "0.001"}
+            ),
+            "estoque_maximo": forms.NumberInput(
+                attrs={"class": INPUT_CLASS, "step": "0.001"}
+            ),
+            "descricao": forms.Textarea(attrs={"class": INPUT_CLASS, "rows": 2}),
+            "observacao": forms.Textarea(attrs={"class": INPUT_CLASS, "rows": 2}),
+        }
+
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tenant = tenant
+        if tenant is not None:
+            self.fields["categoria"].queryset = Categoria.objects.for_tenant(tenant)
+            self.fields["marca"].queryset = Marca.objects.for_tenant(tenant)
+        for campo in ("categoria", "marca"):
+            self.fields[campo].widget.attrs["class"] = INPUT_CLASS
+
+    def clean_codigo_barras(self):
+        codigo = (self.cleaned_data.get("codigo_barras") or "").strip()
+        if not codigo:
+            return ""
+        if not codigo.isdigit():
+            raise forms.ValidationError(
+                "O código de barras deve conter apenas dígitos."
+            )
+        try:
+            valido = BarcodeService.validate(codigo)
+        except BarcodeError:
+            valido = False
+        if not valido:
+            raise forms.ValidationError(
+                "EAN-13 inválido: verifique os 13 dígitos e o dígito verificador."
+            )
+        return codigo
+
+    def clean(self):
+        cleaned = super().clean()
+        tenant = getattr(self.instance, "tenant", None) or self.tenant
+        categoria = cleaned.get("categoria")
+        marca = cleaned.get("marca")
+        if tenant is not None:
+            if categoria is not None and categoria.tenant_id != tenant.id:
+                self.add_error("categoria", "Categoria não pertence ao tenant.")
+            if marca is not None and marca.tenant_id != tenant.id:
+                self.add_error("marca", "Marca não pertence ao tenant.")
+            codigo = cleaned.get("codigo_barras")
+            if codigo:
+                duplicado = (
+                    Produto.objects.for_tenant(tenant)
+                    .filter(codigo_barras=codigo)
+                    .exclude(pk=self.instance.pk)
+                    .exists()
+                )
+                if duplicado:
+                    self.add_error(
+                        "codigo_barras",
+                        "Este código de barras já está em uso no seu tenant.",
+                    )
+        return cleaned

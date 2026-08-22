@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{% block app_title %}Painel{% endblock %} — PDV{% endblock %}
+
+{% block content %}
+<header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-6 overflow-x-auto">
+            <a href="/" class="font-bold text-indigo-600 whitespace-nowrap">PDV</a>
+            <nav class="flex items-center gap-4 text-sm text-slate-600">
+                <a href="{% url 'dashboard' %}" class="hover:text-indigo-600 whitespace-nowrap">Dashboard</a>
+                {% block nav_extra %}{% endblock %}
+            </nav>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+            <span class="text-slate-500 hidden sm:inline">{{ user.get_full_name|default:user.username }}</span>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-slate-500 hover:text-red-600">Sair</button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="rounded-lg px-4 py-3 text-sm
+                    {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+                    {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+                    {% else %}bg-indigo-50 text-indigo-800 border border-indigo-200{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% block app_content %}{% endblock %}
+</main>
+{% endblock %}

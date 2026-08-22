@@ -1,0 +1,78 @@
+{% extends "app_base.html" %}
+{% block app_title %}{% if tipo == 'entrada' %}Entradas{% else %}Saídas{% endif %}{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold text-slate-900">{% if tipo == 'entrada' %}Entradas{% else %}Saídas{% endif %}</h1>
+    {% if tipo == 'entrada' %}
+        <a href="{% url 'financial:entrada_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova entrada</a>
+    {% else %}
+        <a href="{% url 'financial:saida_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova saída</a>
+    {% endif %}
+</div>
+
+<form method="get" class="mb-4 flex flex-wrap gap-2">
+    <input type="text" name="q" value="{{ busca }}" placeholder="Buscar descrição..." class="rounded-lg border border-slate-300 px-3 py-2 text-sm w-64">
+    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todos os status</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if value == status %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Filtrar</button>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Descrição</th>
+                <th class="px-4 py-3">Valor</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Conta</th>
+                {% if tipo == 'entrada' %}<th class="px-4 py-3">Competência</th>{% else %}<th class="px-4 py-3">Vencimento</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for lancamento in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        {% if tipo == 'entrada' %}
+                            <a href="{% url 'financial:entrada_detalhe' lancamento.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ lancamento.descricao }}</a>
+                        {% else %}
+                            <a href="{% url 'financial:saida_detalhe' lancamento.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ lancamento.descricao }}</a>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 font-medium">{{ lancamento.valor }}</td>
+                    <td class="px-4 py-3">
+                        {% if lancamento.status == 'RECEBIDA' or lancamento.status == 'PAGA' %}
+                            <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">{{ lancamento.get_status_display }}</span>
+                        {% elif lancamento.status == 'CANCELADA' %}
+                            <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
+                        {% else %}
+                            <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">{{ lancamento.get_status_display }}</span>
+                        {% endif %}
+                        {% if lancamento.vencida %}<span class="ml-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Vencida</span>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">{{ lancamento.conta_financeira.nome }}</td>
+                    {% if tipo == 'entrada' %}
+                        <td class="px-4 py-3 text-slate-500">{{ lancamento.data_competencia|date:"d/m/Y" }}</td>
+                    {% else %}
+                        <td class="px-4 py-3 text-slate-500">{{ lancamento.data_vencimento|date:"d/m/Y" }}</td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">Nenhum lançamento encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
+        {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-indigo-600">&laquo; Anterior</a>{% else %}<span></span>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-indigo-600">Próxima &raquo;</a>{% else %}<span></span>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}

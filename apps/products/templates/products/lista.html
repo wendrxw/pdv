@@ -1,0 +1,95 @@
+{% extends "app_base.html" %}
+{% block app_title %}Produtos{% endblock %}
+{% block nav_extra %}
+<a href="{% url 'products:lista' %}" class="text-indigo-600 font-medium whitespace-nowrap">Produtos</a>
+{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Produtos</h1>
+        <p class="text-sm text-slate-500">{{ pagina.paginator.count }} produto(s) cadastrado(s)</p>
+    </div>
+    <a href="{% url 'products:novo' %}"
+       class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+        Novo produto
+    </a>
+</div>
+
+<form method="get" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-3">
+    <input type="text" name="q" value="{{ termo }}" placeholder="Buscar por nome ou SKU"
+           class="md:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+    <select name="categoria" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+        <option value="">Todas as categorias</option>
+        {% for categoria in categorias %}
+            <option value="{{ categoria.pk }}" {% if categoria.pk|stringformat:"s" == categoria_selecionada %}selected{% endif %}>{{ categoria.nome }}</option>
+        {% endfor %}
+    </select>
+    <select name="marca" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+        <option value="">Todas as marcas</option>
+        {% for marca in marcas %}
+            <option value="{{ marca.pk }}" {% if marca.pk|stringformat:"s" == marca_selecionada %}selected{% endif %}>{{ marca.nome }}</option>
+        {% endfor %}
+    </select>
+    <div class="flex gap-2">
+        <select name="status" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+            <option value="">Todos</option>
+            <option value="ativos" {% if status == 'ativos' %}selected{% endif %}>Ativos</option>
+            <option value="inativos" {% if status == 'inativos' %}selected{% endif %}>Inativos</option>
+        </select>
+        <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Filtrar</button>
+    </div>
+</form>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Categoria</th>
+                <th class="px-4 py-3">Preço de venda</th>
+                <th class="px-4 py-3">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for produto in pagina %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        <a href="{% url 'products:detalhe' produto.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ produto.nome }}</a>
+                        {% if not produto.ativo %}<span class="ml-2 text-xs text-red-600">(inativo)</span>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">{{ produto.sku|default:"—" }}</td>
+                    <td class="px-4 py-3 text-slate-500">{{ produto.categoria|default:"—" }}</td>
+                    <td class="px-4 py-3">R$ {{ produto.preco_venda }}</td>
+                    <td class="px-4 py-3">
+                        {% if produto.ativo %}
+                            <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Ativo</span>
+                        {% else %}
+                            <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Inativo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-10 text-center text-slate-400">
+                        Nenhum produto encontrado.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.has_other_pages %}
+    <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
+        {% if pagina.has_previous %}
+            <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}&status={{ status }}" class="hover:text-indigo-600">&laquo; Anterior</a>
+        {% else %}<span></span>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}
+            <a href="?page={{ pagina.next_page_number }}&q={{ termo }}&status={{ status }}" class="hover:text-indigo-600">Próxima &raquo;</a>
+        {% else %}<span></span>{% endif %}
+    </nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "app_base.html" %}
+{% block app_title %}Estoque{% endblock %}
+{% block nav_extra %}
+<a href="{% url 'products:lista' %}" class="hover:text-indigo-600 whitespace-nowrap">Produtos</a>
+<a href="{% url 'inventory:dashboard' %}" class="text-indigo-600 font-medium whitespace-nowrap">Estoque</a>
+{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Estoque</h1>
+        <p class="text-sm text-slate-500">Visão geral do inventário da loja</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'inventory:entrada' %}" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Entrada</a>
+        <a href="{% url 'inventory:saida' %}" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Saída</a>
+        <a href="{% url 'inventory:movimentacoes' %}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Movimentações</a>
+        <a href="{% url 'inventory:saldos' %}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Saldos</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Produtos</p>
+        <p class="mt-1 text-3xl font-bold">{{ total_produtos }}</p>
+        <p class="text-sm text-slate-500">{{ produtos_ativos }} ativo(s)</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Sem estoque</p>
+        <p class="mt-1 text-3xl font-bold text-red-600">{{ sem_estoque }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Estoque baixo</p>
+        <p class="mt-1 text-3xl font-bold text-amber-500">{{ estoque_baixo }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Valor estimado</p>
+        <p class="mt-1 text-lg font-bold">Custo: R$ {{ valor_custo }}</p>
+        <p class="text-sm text-slate-500">Venda: R$ {{ valor_venda }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <section class="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Últimas movimentações</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-6 py-3">Produto</th>
+                    <th class="px-6 py-3">Tipo</th>
+                    <th class="px-6 py-3">Qtd.</th>
+                    <th class="px-6 py-3">Saldo final</th>
+                    <th class="px-6 py-3">Data</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for mov in ultimas_movimentacoes %}
+                    <tr>
+                        <td class="px-6 py-3">{{ mov.produto.nome }}</td>
+                        <td class="px-6 py-3 text-slate-500">{{ mov.get_tipo_display }}</td>
+                        <td class="px-6 py-3 {% if mov.saldo_posterior >= mov.saldo_anterior %}text-emerald-600{% else %}text-red-600{% endif %}">
+                            {{ mov.quantidade }}
+                        </td>
+                        <td class="px-6 py-3">{{ mov.saldo_posterior }}</td>
+                        <td class="px-6 py-3 text-slate-500">{{ mov.data_criacao|date:"d/m H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-slate-400">Nenhuma movimentação registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <aside class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Últimos produtos cadastrados</h2>
+        <ul class="space-y-3 text-sm">
+            {% for produto in ultimos_produtos %}
+                <li class="flex items-center justify-between">
+                    <span>{{ produto.nome }}</span>
+                    <span class="text-slate-400 text-xs">{{ produto.data_cadastro|date:"d/m" }}</span>
+                </li>
+            {% empty %}
+                <li class="text-slate-400">Nenhum produto cadastrado.</li>
+            {% endfor %}
+        </ul>
+    </aside>
+</div>
+{% endblock %}
