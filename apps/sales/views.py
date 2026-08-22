@@ -78,21 +78,20 @@ def pdv_home(request):
         status=Venda.Status.ABERTA
     ).select_related("caixa", "operador")
     if request.method == "POST":
-        form = AbrirCaixaForm(request.POST, tenant=tenant)
+        form = AbrirCaixaForm(request.POST)
         if form.is_valid():
             try:
                 abrir_caixa(
                     tenant,
                     operador=request.user,
-                    conta_financeira=form.cleaned_data["conta_financeira"],
-                    saldo_inicial=form.cleaned_data["saldo_inicial"],
+                    saldo_inicial=form.cleaned_data.get("saldo_inicial") or Decimal("0"),
                 )
                 messages.success(request, "Caixa aberto.")
                 return redirect("sales:pdv")
             except SalesError as exc:
                 messages.error(request, str(exc))
     else:
-        form = AbrirCaixaForm(tenant=tenant)
+        form = AbrirCaixaForm()
     return render(
         request,
         "sales/pdv.html",
@@ -105,12 +104,28 @@ def pdv_home(request):
 
 
 @login_required
-def nova_venda(request, caixa_uuid):
-    """Cria uma venda no caixa informado (POST) e abre a tela de venda."""
+def nova_venda(request, caixa_uuid=None):
+    """Cria uma venda no caixa informado (ou abre um caixa automaticamente
+    com a conta principal) e abre a tela de venda."""
     tenant = _tenant_atual(request)
     if tenant is None:
         return redirect("dashboard")
-    caixa = get_object_or_404(Caixa, tenant=tenant, uuid=caixa_uuid)
+    if caixa_uuid:
+        caixa = get_object_or_404(Caixa, tenant=tenant, uuid=caixa_uuid)
+    else:
+        caixa = (
+            Caixa.objects.for_tenant(tenant)
+            .filter(operador=request.user, status=Caixa.Status.ABERTO)
+            .order_by("-data_abertura")
+            .first()
+        )
+        if caixa is None:
+            try:
+                caixa = abrir_caixa(tenant, operador=request.user)
+                messages.success(request, "Caixa aberto automaticamente.")
+            except SalesError as exc:
+                messages.error(request, str(exc))
+                return redirect("sales:pdv")
     venda = abrir_venda(caixa)
     return redirect("sales:venda_tela", uuid=venda.uuid)
 
@@ -176,16 +191,25 @@ def _executar_acao_venda(request, venda, acao):
             raise SalesError("Desconto inválido.")
         aplicar_desconto(venda, desconto, usuario=usuario)
     elif acao == "pagamento":
-        forma_uuid = request.POST.get("forma_pagamento", "")
+        pagamento_form = PagamentoVendaForm(request.POST, tenant=venda.tenant)
         valor = _decimal(request.POST.get("valor"))
-        forma = FormaPagamento.objects.for_tenant(venda.tenant).filter(
-            uuid=forma_uuid
-        ).first()
-        if forma is None or valor is None:
+        if not pagamento_form.is_valid() or valor is None:
             raise SalesError("Pagamento inválido.")
-        adicionar_pagamento(venda, forma, valor)
+        adicionar_pagamento(
+            venda, pagamento_form.cleaned_data["forma_pagamento"], valor
+        )
     elif acao == "finalizar":
-        finalizar_venda(venda, usuario=usuario)
+        forma = None
+        forma_uuid = request.POST.get("forma_pagamento", "").strip()
+        if forma_uuid:
+            forma = (
+                FormaPagamento.objects.for_tenant(venda.tenant)
+                .filter(uuid=forma_uuid)
+                .first()
+            )
+            if forma is None:
+                raise SalesError("Forma de pagamento inválida.")
+        finalizar_venda(venda, usuario=usuario, forma_pagamento=forma)
         messages.success(request, f"Venda {venda.numero} finalizada.")
     elif acao == "cancelar":
         motivo = request.POST.get("motivo", "")
@@ -305,12 +329,27 @@ def caixas_lista(request):
     tenant = _tenant_atual(request, "caixa")
     if tenant is None:
         return redirect("dashboard")
+    if request.method == "POST":
+        form = AbrirCaixaForm(request.POST)
+        if form.is_valid():
+            try:
+                abrir_caixa(
+                    tenant,
+                    operador=request.user,
+                    saldo_inicial=form.cleaned_data.get("saldo_inicial") or Decimal("0"),
+                )
+                messages.success(request, "Caixa aberto.")
+                return redirect("sales:caixas")
+            except SalesError as exc:
+                messages.error(request, str(exc))
+    else:
+        form = AbrirCaixaForm()
     lista = Caixa.objects.for_tenant(tenant).select_related(
         "operador", "conta_financeira"
     )
     paginador = Paginator(lista.order_by("-data_abertura"), ITENS_POR_PAGINA)
     pagina = paginador.get_page(request.GET.get("page"))
-    form = AbrirCaixaForm(tenant=tenant)
+    form = AbrirCaixaForm()
     abertos = lista.filter(status=Caixa.Status.ABERTO)
     return render(
         request,

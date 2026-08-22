@@ -58,7 +58,7 @@
         </div>
 
         {% if venda.status == "FINALIZADA" or venda.status == "ABERTA" %}
-            <form method="post" onsubmit="return confirm('Cancelar a venda e devolver o estoque?');"
+            <form method="post" onsubmit="return confirm('Cancelar a venda?');"
                   class="bg-white rounded-xl border border-red-100 p-6">
                 {% csrf_token %}
                 <label class="block text-sm text-slate-600 mb-1">Justificativa do cancelamento</label>

@@ -85,6 +85,35 @@ class PdvHomeViewTest(ViewsBaseTestCase):
         self.assertRedirects(resposta, reverse("dashboard"))
 
 
+class AbrirCaixaRapidoViewsTest(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            nome="Loja Rápida", status=Tenant.Status.ATIVO
+        )
+        self.user = User.objects.create_user(
+            username="operador-rapido", password="senha-12345", tenant=self.tenant
+        )
+        self.client.force_login(self.user)
+
+    def test_pdv_post_abre_caixa_sem_selecionar_conta(self):
+        resposta = self.client.post(
+            reverse("sales:pdv"), {"saldo_inicial": "50"}, follow=True
+        )
+        self.assertEqual(resposta.status_code, 200)
+        caixa = Caixa.objects.get(operador=self.user)
+        self.assertEqual(caixa.conta_financeira.nome, "Caixa Principal")
+        self.assertEqual(caixa.saldo_inicial, Decimal("50.00"))
+
+    def test_nova_venda_rapida_abre_caixa_automaticamente(self):
+        resposta = self.client.post(reverse("sales:nova_venda_rapida"))
+        venda = Venda.objects.get()
+        self.assertRedirects(
+            resposta, reverse("sales:venda_tela", args=[venda.uuid])
+        )
+        self.assertEqual(venda.caixa.conta_financeira.nome, "Caixa Principal")
+        self.assertEqual(venda.caixa.operador, self.user)
+
+
 class NovaVendaViewTest(ViewsBaseTestCase):
     def test_post_cria_venda_e_redireciona_para_tela(self):
         resposta = self.client.post(
@@ -108,7 +137,7 @@ class VendaTelaViewTest(ViewsBaseTestCase):
         )
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Cerveja")
-        self.assertContains(resposta, "24.00")
+        self.assertContains(resposta, "R$ 24,00")
 
     def test_post_adiciona_item(self):
         resposta = self.client.post(
@@ -133,20 +162,19 @@ class VendaTelaViewTest(ViewsBaseTestCase):
         self.assertEqual(self.venda.desconto, Decimal("4.00"))
 
     def test_post_finaliza_venda(self):
-        self.client.post(
-            reverse("sales:venda_tela", args=[self.venda.uuid]),
-            {
-                "acao": "pagamento",
-                "forma_pagamento": str(self.dinheiro.uuid),
-                "valor": "24.00",
-            },
-        )
         resposta = self.client.post(
             reverse("sales:venda_tela", args=[self.venda.uuid]),
-            {"acao": "finalizar"},
+            {
+                "acao": "finalizar",
+                "forma_pagamento": str(self.dinheiro.uuid),
+            },
         )
         self.venda.refresh_from_db()
         self.assertEqual(self.venda.status, Venda.Status.FINALIZADA)
+        self.assertEqual(self.venda.pagamentos.count(), 1)
+        self.assertEqual(
+            self.venda.pagamentos.get().forma_pagamento, self.dinheiro
+        )
         self.assertRedirects(
             resposta, reverse("sales:venda_detalhe", args=[self.venda.uuid])
         )
@@ -159,6 +187,34 @@ class VendaTelaViewTest(ViewsBaseTestCase):
         self.assertEqual(resposta.status_code, 302)
         self.venda.refresh_from_db()
         self.assertEqual(self.venda.status, Venda.Status.ABERTA)
+
+    def test_post_pagamento_aceita_uuid_da_forma(self):
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {
+                "acao": "pagamento",
+                "forma_pagamento": str(self.dinheiro.uuid),
+                "valor": "24.00",
+            },
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.pagamentos.count(), 1)
+
+    def test_post_pagamento_com_pk_invalido_mostra_mensagem(self):
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {
+                "acao": "pagamento",
+                "forma_pagamento": str(self.dinheiro.pk),
+                "valor": "24.00",
+            },
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Pagamento inválido")
+        self.assertEqual(self.venda.pagamentos.count(), 0)
 
     def test_cross_tenant_404(self):
         outro = Tenant.objects.create(nome="Outra")

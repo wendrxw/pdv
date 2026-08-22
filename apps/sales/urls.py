@@ -7,6 +7,7 @@ app_name = "sales"
 urlpatterns = [
     # PDV (/app/pdv/)
     path("app/pdv/", views.pdv_home, name="pdv"),
+    path("app/pdv/nova-venda/", views.nova_venda, name="nova_venda_rapida"),
     path(
         "app/pdv/caixa/<uuid:caixa_uuid>/nova-venda/",
         views.nova_venda,
