@@ -145,6 +145,11 @@ PASSWORD_HASHERS = [
 
 AUTH_USER_MODEL = "accounts.User"
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "apps.clients.backends.ClientePlataformaBackend",
+]
+
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/app/"
 LOGOUT_REDIRECT_URL = "/"

@@ -1,6 +1,7 @@
 import django.contrib.admin as admin
 from django.contrib import messages
 
+from .forms import ClientePlataformaForm
 from .models import (
     ClienteHistorico,
     ClientePlataforma,
@@ -43,6 +44,7 @@ class OnboardingInline(admin.StackedInline):
 
 @admin.register(ClientePlataforma)
 class ClientePlataformaAdmin(admin.ModelAdmin):
+    form = ClientePlataformaForm
     list_display = (
         "nome",
         "tipo_pessoa",
@@ -73,6 +75,10 @@ class ClientePlataformaAdmin(admin.ModelAdmin):
                     "cpf_cnpj",
                 )
             },
+        ),
+        (
+            "Segurança",
+            {"fields": ("senha",)},
         ),
         ("Contato", {"fields": ("email", "telefone_celular")}),
         (

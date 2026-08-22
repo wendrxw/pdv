@@ -11,6 +11,7 @@ Fluxo comercial:
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
 from apps.core.validators import only_digits, validate_cpf_cnpj
@@ -64,6 +65,7 @@ class ClientePlataforma(models.Model):
         ),
     )
     email = models.EmailField("e-mail")
+    senha = models.CharField("senha", max_length=128, blank=True)
     telefone_celular = models.CharField("telefone celular", max_length=20)
     origem = models.CharField(
         "origem",
@@ -98,6 +100,19 @@ class ClientePlataforma(models.Model):
         verbose_name="responsável",
     )
 
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cliente_plataforma",
+        verbose_name="conta de acesso",
+        help_text=(
+            "Conta de usuário vinculada para login do cliente. "
+            "Criada automaticamente no primeiro acesso."
+        ),
+    )
+
     data_cadastro = models.DateTimeField("cadastrado em", auto_now_add=True)
     data_atualizacao = models.DateTimeField("atualizado em", auto_now=True)
 
@@ -112,6 +127,14 @@ class ClientePlataforma(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def set_password(self, raw_password):
+        self.senha = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        if not self.senha:
+            return False
+        return check_password(raw_password, self.senha)
 
     def save(self, *args, **kwargs):
         # Normalizações garantidas no backend, independentemente da origem.

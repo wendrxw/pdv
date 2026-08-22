@@ -95,6 +95,14 @@ def alterar_status(cliente, novo_status, *, usuario=None, descricao=""):
         SUSPENSO → ATIVO
         EM_ANALISE/PENDENTE → CANCELADO
     """
+    if novo_status == ClientePlataforma.Status.ATIVO and (
+        cliente.status != ClientePlataforma.Status.SUSPENSO
+        and not Onboarding.objects.filter(cliente=cliente, tenant__isnull=False).exists()
+    ):
+        raise ClientServiceError(
+            "Ativação só pode ser feita pela ação de ativação "
+            "(cria o tenant automaticamente)."
+        )
     transicoes_validas = {
         ClientePlataforma.Status.LEAD: {
             ClientePlataforma.Status.EM_ANALISE,
@@ -153,9 +161,15 @@ def ativar_cliente(cliente, *, usuario=None, nome_tenant=None):
     Garante consistência: se a criação do tenant falhar, nada é persistido —
     o cliente não fica parcialmente ativado.
     """
-    if cliente.status == ClientePlataforma.Status.ATIVO:
+    onboarding = Onboarding.objects.filter(cliente=cliente).first()
+    tem_tenant = getattr(onboarding, "tenant_id", None) is not None
+
+    if cliente.status == ClientePlataforma.Status.ATIVO and tem_tenant:
         raise ClientServiceError("Cliente já está ativo.")
-    if cliente.status != ClientePlataforma.Status.PENDENTE:
+    if cliente.status not in {
+        ClientePlataforma.Status.PENDENTE,
+        ClientePlataforma.Status.ATIVO,
+    }:
         raise ClientServiceError(
             "Somente clientes PENDENTES podem ser ativados. "
             "Mova o cliente pelo fluxo de aprovação primeiro."

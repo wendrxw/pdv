@@ -71,7 +71,7 @@ class TransicaoStatusTest(TestCase):
         cliente = self._cliente(ClientePlataforma.Status.LEAD)
         alterar_status(cliente, ClientePlataforma.Status.EM_ANALISE)
         alterar_status(cliente, ClientePlataforma.Status.PENDENTE)
-        alterar_status(cliente, ClientePlataforma.Status.ATIVO)
+        ativar_cliente(cliente)
         cliente.refresh_from_db()
         self.assertEqual(cliente.status, ClientePlataforma.Status.ATIVO)
 
@@ -134,6 +134,16 @@ class AtivacaoClienteTest(TestCase):
         with self.assertRaises(ClientServiceError):
             ativar_cliente(cliente)
         self.assertEqual(Tenant.objects.count(), total_tenants)
+
+    def test_ativacao_repara_cliente_ativo_sem_tenant(self):
+        """Cliente marcado como ATIVO diretamente no admin (sem passar pela
+        ativação) não possui tenant; a ativação deve completar o cadastro."""
+        cliente = self._cliente(status=ClientePlataforma.Status.ATIVO)
+        ativar_cliente(cliente)
+        cliente.refresh_from_db()
+        onboarding = Onboarding.objects.get(cliente=cliente)
+        self.assertIsNotNone(onboarding.tenant)
+        self.assertEqual(Tenant.objects.count(), 1)
 
 
 class ConverterLeadTest(TestCase):
