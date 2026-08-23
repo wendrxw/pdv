@@ -234,12 +234,38 @@ Gaps identificados para produção (numerados conforme o plano da §5):
 
 ## 6. Check-list de aceite para produção
 
-- [ ] API responde em HTTPS com certificado válido (curl no pair/poll).
-- [ ] Estação pareada em máquina de loja com runit ativo (`sv status`).
-- [ ] `raw-test` e `codepage-test` aprovados no papel (acentos corretos).
-- [ ] Venda real: comprovante sai completo, acentuado, com folga de corte.
-- [ ] Desligar impressora → job não se perde; religar → imprime.
-- [ ] Painel do PDV reflete todos os estados sem enganar o operador.
-- [ ] Falha (sem papel) termina em ⚠ + "Tentar novamente" funcionando.
-- [ ] Estação sem atividade detectável pelo admin da plataforma.
-- [ ] Nenhuma porta aberta na loja; nenhum segredo do Django no agente.
+Legenda: `[x]` validado no ambiente de teste (esta máquina, impressora real);
+`[ ]` pendente do servidor real de produção.
+
+- [x] API responde com autenticação e erros corretos (pair inválido → 400;
+  poll sem credencial → 401; força bruta bloqueada com 429 após 20 falhas).
+- [ ] API em HTTPS com certificado válido (requer o servidor real; artefatos
+  prontos em `deploy/`: nginx, env e Cloudflare Tunnel).
+- [x] Estação pareada e agente rodando na máquina da loja (serviço runit
+  pronto em `local-print-agent/deploy/print-agent/`; instalar com
+  `sudo sh instalar.sh`).
+- [x] `raw-test` e `codepage-test` aprovados no papel (acentos corretos —
+  MDK-080 usa `PRINTER_ESCPOS=0` + `PRINTER_CODEPAGE=cp850`).
+- [x] Venda real: comprovante sai completo, acentuado, com folga de corte
+  (validação ponta a ponta: venda finalizada via HTTP → agente → PRINTED).
+- [x] Agente offline: job permanece PENDING e imprime quando o agente volta.
+- [x] Impressora desligada: job permanece PENDING (tentativa 0) e imprime
+  ao religar.
+- [x] Painel do PDV reflete todos os estados sem enganar o operador.
+- [ ] Falha física (sem papel) termina em ⚠ + "Tentar novamente" — coberto
+  por testes automatizados; pendente validação física.
+- [x] Estação sem atividade detectável: `python manage.py check_print_agents
+  --minutos 10` (exit 1 quando houver estação atrasada; pronto para cron).
+- [x] Nenhuma porta aberta na loja; nenhum segredo do Django no agente
+  (credencial local 0600, escopo mínimo do token).
+
+## 7. Status de execução
+
+| Item | Onde | Estado |
+| --- | --- | --- |
+| Throttle por IP (429 após 20 falhas) + auditoria de pareamento | `apps/printing/api.py`, `services.py` | Implementado + testado |
+| Monitoramento de estação offline | `python manage.py check_print_agents` | Implementado + testado |
+| gunicorn (WSGI de produção) | `pyproject.toml` | Adicionado (v26.1.0) |
+| Artefatos de deploy do servidor | `deploy/` (nginx, env, Cloudflare Tunnel) | Prontos |
+| Instalador runit da loja + svlogd | `local-print-agent/deploy/print-agent/instalar.sh`, `log-run` | Prontos (executar com sudo) |
+| Validação ponta a ponta + falhas | Esta máquina (impressora real) | Aprovada |

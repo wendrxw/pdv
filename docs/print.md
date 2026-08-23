@@ -255,5 +255,12 @@ Diagnóstico rápido na máquina da loja:
 printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0   # a impressora está acessível?
 python3 -m app.main raw-test                   # o mesmo teste via agente
 python3 -m app.main test                       # página de teste (ESC/POS ou texto)
+python3 -m app.main codepage-test              # qual codificação de acentos usar
 sv status print-agent                          # serviço runit ativo? (Void Linux)
+```
+
+No servidor, monitoramento de estações sem atividade (para cron):
+
+```bash
+python manage.py check_print_agents --minutos 10   # exit 1 se alguma estiver parada
 ```
