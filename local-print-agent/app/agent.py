@@ -133,8 +133,11 @@ class PrintAgent:
             if self.config.escpos:
                 dados_impressao = impressora_escpos.render(linhas)
             else:
+                # Modo texto puro: mesmo efeito do comando
+                #   printf "..." > /dev/usb/lp0
+                # (impressoras sem ESC/POS confiável, ex.: Tomate MDK-080).
                 dados_impressao = (
-                    "\n".join(texto for texto, _estilo in linhas) + "\n\n\n\n"
+                    "\n".join(texto for texto, _estilo in linhas) + "\n\n\n"
                 ).encode("utf-8", errors="replace")
             self.impressora.escrever(dados_impressao)
         except (PrinterError, OSError) as exc:

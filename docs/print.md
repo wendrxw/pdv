@@ -107,29 +107,33 @@ primeiro pareamento bem-sucedido.
 
 ## Modelos
 
-- `ConfiguracaoImpressao` (1:1 tenant): largura 58/80mm, impressão
-  automática, estação padrão, tentativas máximas, nome da loja, CNPJ,
-  endereço, telefone, mensagem final. Campos de cabeçalho vazios caem
-  para o `Emitente` fiscal (ou nome do tenant).
+- `ConfiguracaoImpressao` (1:1 tenant): largura 58/80mm, estação padrão,
+  tentativas máximas, nome da loja, CNPJ, endereço, telefone, mensagem
+  final. Campos de cabeçalho vazios caem para o `Emitente` fiscal (ou
+  nome do tenant).
 - `EstacaoImpressao`: `nome`, `status` (ATIVA/INATIVA), `token_hash`,
   `codigo_pareamento`, `ultima_atividade`, `data_pareamento`. Única por
   tenant+nome.
 - `PrintJob`: descrito acima. Todos registrados no Django Admin com
   `list_display`/`list_filter` (filtro por tenant).
 
-## Fluxo no PDV
+## Fluxo no PDV — impressão obrigatória
 
-1. Operador finaliza a venda (persistida).
-2. Se `impressao_automatica=true` (padrão), a view enfileira um PrintJob
-   — falha de impressão **nunca** bloqueia a venda (apenas aviso).
+A impressão do comprovante acontece **SEMPRE ao final da compra**, no
+momento em que o atendente **confirma o pagamento** (finalização da
+venda):
+
+1. Operador confirma o pagamento → venda finalizada (persistida).
+2. A view enfileira o PrintJob **obrigatoriamente** — sem opção de
+   desligar. Falha de impressão **nunca** bloqueia a venda (apenas aviso
+   ao operador; o job fica na fila com retry).
 3. A tela `venda_detalhe` mostra o painel do comprovante:
-   - sem job: `Venda finalizada! [ Imprimir comprovante ] [ Não imprimir ]`
    - aguardando: `Imprimindo...` (polling JS a cada 3s em
      `printing:status_venda`)
    - sucesso: `✓ Comprovante impresso` (+ "Imprimir novamente")
    - falha: `⚠ Não foi possível imprimir [ Tentar novamente ]`
-4. `Imprimir comprovante` cria job manual (idempotente por venda;
-   "Imprimir novamente" após PRINTED cria novo job).
+4. `Imprimir novamente` cria um novo job (idempotente por venda;
+   após PRINTED é gerado novo uuid).
 
 ## ESC/POS e largura do papel
 
@@ -138,10 +142,40 @@ primeiro pareamento bem-sucedido.
   (`1.234,56`), quantidades sem zeros à direita (`2`, `2,5`).
 - Codificação: `utf8` (padrão) ou `cp850` via `PRINTER_CODEPAGE`
   (seleciona a tabela com `ESC t 2`). Acentos e UTF-8 cobertos por teste.
-- A maioria das térmicas vendidas no Brasil (Elgin, Bematech, Epson etc.)
-  fala ESC/POS; para confirmar em campo, rode `python -m app.main test`
-  (página de teste com acentos + corte). Se a impressora não suportar,
-  `PRINTER_ESCPOS=0` envia apenas texto puro.
+
+## Impressora Tomate MDK-080 — alternativa em texto puro (printf)
+
+O driver oficial da **Tomate MDK-080** só existe para Windows, mas a
+impressora funciona no Linux via `usblp` com escrita direta no
+dispositivo. O teste que valida a impressora é:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0
+```
+
+O agente reproduz esse comportamento em Python (abertura direta do
+dispositivo — nunca um shell) no **modo texto puro**:
+
+- `PRINTER_ESCPOS=0` desativa os comandos ESC/POS: o comprovante é
+  enviado como texto puro + `\n\n\n` (exatamente o padrão do comando
+  acima), que é o caminho mais compatível com impressoras de firmware
+  restrito como a MDK-080.
+- Diagnóstico equivalente ao printf: `python -m app.main raw-test`
+  escreve `TESTE SEM SUDO\n\n\n` direto em `PRINTER_DEVICE`.
+- `python -m app.main test` imprime uma página de teste: com ESC/POS por
+  padrão, ou em texto puro com `PRINTER_ESCPOS=0`.
+
+Configuração recomendada para a MDK-080 em
+`/etc/sv/print-agent/conf`:
+
+```sh
+export PRINTER_DEVICE=/dev/usb/lp0
+export PRINTER_ESCPOS=0        # texto puro (printf), firmware MDK-080
+export PRINT_AGENT_LARGURA_PADRAO=58
+```
+
+As térmicas tradicionais (Elgin, Bematech, Epson etc.) continuam usando
+ESC/POS (`PRINTER_ESCPOS=1`, padrão) para realce e corte automático.
 
 ## Segurança
 

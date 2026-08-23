@@ -17,5 +17,9 @@ export PRINTER_DEVICE=/dev/usb/lp0
 # Codificação: utf8 (padrão) ou cp850.
 export PRINTER_CODEPAGE=utf8
 
+# ESC/POS: 1 = comandos ESC/POS (Elgin/Bematech/Epson); 0 = texto puro
+# estilo printf (indicado p/ Tomate MDK-080, firmware restrito).
+export PRINTER_ESCPOS=1
+
 # Intervalo de polling em segundos.
 export PRINT_AGENT_POLL_INTERVAL=3

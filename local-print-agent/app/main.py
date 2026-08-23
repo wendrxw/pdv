@@ -1,9 +1,10 @@
 """Ponto de entrada do Local Print Agent.
 
 Comandos:
-    python -m app.main run      # pareia (se preciso) e entra no loop
-    python -m app.main pair     # apenas pareia e salva a credencial
-    python -m app.main test     # página de teste na impressora (ESC/POS)
+    python -m app.main run       # pareia (se preciso) e entra no loop
+    python -m app.main pair      # apenas pareia e salva a credencial
+    python -m app.main test      # página de teste na impressora (ESC/POS)
+    python -m app.main raw-test  # teste em texto puro (printf > /dev/usb/lp0)
 
 Variáveis de ambiente: veja app/config.py e README.md.
 """
@@ -101,10 +102,30 @@ def comando_test(config):
     dados = (
         impressora_escpos.render(linhas)
         if config.escpos
-        else ("\n".join(t for t, _ in linhas) + "\n\n\n\n").encode("utf-8")
+        else ("\n".join(t for t, _ in linhas) + "\n\n\n").encode("utf-8")
     )
     impressora.escrever(dados)
     print("Página de teste enviada para", config.device)
+
+
+def comando_raw_test(config):
+    """Diagnóstico no modo mais simples possível: texto puro.
+
+    Equivalente ao comando que valida a impressora em Linux:
+
+        printf "TESTE SEM SUDO\\n\\n\\n" > /dev/usb/lp0
+
+    Sem nenhum comando ESC/POS — serve para impressoras com firmware
+    caprichoso (ex.: Tomate MDK-080, driver oficial só para Windows).
+    """
+    impressora = UsbPrinterDevice(config.device)
+    if not impressora.disponivel():
+        raise SystemExit(
+            f"Impressora indisponível em {config.device}. "
+            "Verifique o cabo e a permissão (grupo lp)."
+        )
+    impressora.escrever(b"TESTE SEM SUDO\n\n\n")
+    print(f"'TESTE SEM SUDO' enviado direto para {config.device}")
 
 
 def comando_run(config):
@@ -151,7 +172,10 @@ def comando_run(config):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="print-agent")
     parser.add_argument(
-        "comando", nargs="?", default="run", choices=["run", "pair", "test"]
+        "comando",
+        nargs="?",
+        default="run",
+        choices=["run", "pair", "test", "raw-test"],
     )
     argumentos = parser.parse_args(argv)
     config = Config.from_env()
@@ -162,6 +186,9 @@ def main(argv=None):
         return 0
     if argumentos.comando == "test":
         comando_test(config)
+        return 0
+    if argumentos.comando == "raw-test":
+        comando_raw_test(config)
         return 0
     return comando_run(config)
 

@@ -63,10 +63,34 @@ execução; após o pareamento, deixe a variável vazia.
 ## Uso
 
 ```bash
-python3 -m app.main run     # loop: autentica, poll, imprime, reporta
-python3 -m app.main pair    # apenas pareamento
-python3 -m app.main test    # página de teste na impressora (ESC/POS)
+python3 -m app.main run       # loop: autentica, poll, imprime, reporta
+python3 -m app.main pair      # apenas pareamento
+python3 -m app.main test      # página de teste na impressora (ESC/POS)
+python3 -m app.main raw-test  # teste em texto puro (printf > /dev/usb/lp0)
 ```
+
+## Modo texto puro (printf) — alternativa para a Tomate MDK-080
+
+A impressora térmica **Tomate MDK-080** tem driver oficial apenas para
+Windows, mas funciona no Linux via `usblp`, escrevendo direto no
+dispositivo:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0
+```
+
+O agente reproduz esse comportamento **sem executar shell**: abre o
+dispositivo em modo binário e escreve os bytes. Para impressoras de
+firmware restrito como a MDK-080, use o modo texto puro:
+
+```sh
+export PRINTER_ESCPOS=0   # sem comandos ESC/POS; texto + \n\n\n (printf)
+python3 -m app.main raw-test   # equivalente ao printf acima
+```
+
+Com `PRINTER_ESCPOS=0` o comprovante sai em texto puro (sem realce/corte
+automático); com `PRINTER_ESCPOS=1` (padrão) o agente usa ESC/POS
+(Elgin, Bematech, Epson etc.).
 
 ## Variáveis de ambiente
 
@@ -77,7 +101,7 @@ python3 -m app.main test    # página de teste na impressora (ESC/POS)
 | `PRINT_AGENT_PAIR_CODE` | — | Código de pareamento (uso único). |
 | `PRINT_AGENT_LARGURA_PADRAO` | `58` | Largura usada quando o payload não informa. |
 | `PRINTER_CODEPAGE` | `utf8` | `utf8` ou `cp850` (acentos via `ESC t 2`). |
-| `PRINTER_ESCPOS` | `1` | `0` desativa comandos ESC/POS (texto puro). |
+| `PRINTER_ESCPOS` | `1` | `0` desativa ESC/POS (texto puro estilo printf; indicado p/ Tomate MDK-080). |
 | `PRINTER_CORTE_PARCIAL` | `1` | `0` para corte total (`GS V 0`). |
 | `PRINT_AGENT_POLL_INTERVAL` | `3` | Segundos entre polls. |
 | `PRINT_AGENT_HTTP_TIMEOUT` | `30` | Timeout HTTP em segundos. |
