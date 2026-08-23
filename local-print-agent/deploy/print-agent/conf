@@ -1,0 +1,21 @@
+# Configuração do serviço runit do Local Print Agent.
+# Copie para /etc/sv/print-agent/conf e ajuste para a loja.
+
+# Diretório onde o agente está instalado (código + venv desnecessária).
+PRINT_AGENT_DIR=/opt/print-agent
+
+# URL pública do servidor Django (ex.: https://pdv.dominio.com).
+export PRINT_AGENT_SERVER_URL=https://pdv.example.com
+
+# Código de pareamento gerado em PDV → Impressão → Estações (uso único).
+# Apague/desative após o primeiro pareamento bem-sucedido.
+export PRINT_AGENT_PAIR_CODE=
+
+# Dispositivo da impressora térmica USB (usblp). Padrão: /dev/usb/lp0.
+export PRINTER_DEVICE=/dev/usb/lp0
+
+# Codificação: utf8 (padrão) ou cp850.
+export PRINTER_CODEPAGE=utf8
+
+# Intervalo de polling em segundos.
+export PRINT_AGENT_POLL_INTERVAL=3

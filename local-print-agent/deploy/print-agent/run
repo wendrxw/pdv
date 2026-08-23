@@ -1,0 +1,12 @@
+#!/bin/sh
+# Serviço runit do Local Print Agent (Void Linux).
+# Instalação:
+#   sudo mkdir -p /etc/sv/print-agent /etc/sv/print-agent/log
+#   sudo cp run /etc/sv/print-agent/run && sudo chmod +x /etc/sv/print-agent/run
+#   sudo ln -s /etc/sv/print-agent /var/service/
+# Configuração: edite /etc/sv/print-agent/conf (veja README.md).
+[ -r ./conf ] && . ./conf
+
+exec 2>&1
+cd "${PRINT_AGENT_DIR:-/opt/print-agent}"
+exec /usr/bin/python3 -m app.main run
