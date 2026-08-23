@@ -4,7 +4,7 @@ from django.contrib.auth.forms import AuthenticationForm
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(
-        label="Usuário",
+        label="Usuário ou e-mail",
         widget=forms.TextInput(
             attrs={
                 "class": "w-full rounded-lg border border-slate-300 px-3 py-2 "

@@ -2,14 +2,14 @@
 
 Regras (tasks/TSK_00007.md, docs/context-pdv.md §15–16):
 - venda só existe com caixa ABERTO do operador/tenant;
-- itens consomem estoque no ato via EstoqueService (nunca diretamente);
+- o PDV não altera estoque: o caixa apenas registra produtos e contabiliza
+  vendas (o controle de estoque é feito à parte, no módulo de estoque);
 - preço unitário é congelado do Produto.preco_venda no momento;
 - backend é autoridade: frontend envia produto+quantidade, nunca totais;
 - finalização transacional exige pagamentos somando exatamente o total;
 - pagamentos à vista geram MovimentacaoFinanceira ENTRADA na conta do
   caixa; formas marcadas com gera_conta_receber geram ContaReceber;
-- cancelamento nunca apaga registros: devolve estoque e estorna
-  financeiro;
+- cancelamento nunca apaga registros e estorna o financeiro da venda;
 - fechamento calcula o esperado a partir das movimentações referenciadas
   ao caixa (abertura + suprimentos/sangrias + entradas de vendas).
 
@@ -17,7 +17,8 @@ Decisões documentadas:
 - saldo inicial do caixa é lançado como ENTRADA origem ABERTURA_CAIXA
   referenciando o caixa, tornando o esperado auditável pelo financeiro;
 - pagamento fiado gera ContaReceber com uma parcela (estrutura pronta
-  para parcelamento futuro por forma de pagamento).
+  para parcelamento futuro por forma de pagamento);
+- o PDV não baixa estoque: vender com saldo zero é permitido.
 """
 
 from decimal import Decimal
@@ -36,10 +37,8 @@ from apps.financial.services import (
     _aplicar_movimentacao,
     cancelar_conta_receber,
     criar_conta_receber,
-)
-from apps.inventory.services import (
-    registrar_devolucao,
-    registrar_venda,
+    obter_ou_criar_conta_principal,
+    obter_ou_criar_formas_padrao_pdv,
 )
 
 from .models import Caixa, ItemVenda, MovimentacaoCaixa, PagamentoVenda, Venda
@@ -86,10 +85,18 @@ def saldo_esperado_caixa(caixa) -> Decimal:
     return total
 
 
-def abrir_caixa(tenant, *, operador, conta_financeira, saldo_inicial=ZERO):
+def abrir_caixa(tenant, *, operador, conta_financeira=None, saldo_inicial=ZERO):
     """Abre um caixa para o operador. Multi-caixa permitido; apenas um
     ABERTO por operador. Lança a abertura no financeiro quando há troco
-    inicial."""
+    inicial.
+
+    Sem conta informada, usa automaticamente a conta principal do tenant
+    (criando-a se necessário) e garante as formas de pagamento padrão do
+    PDV, deixando o caixa pronto para vender.
+    """
+    if conta_financeira is None:
+        conta_financeira = obter_ou_criar_conta_principal(tenant)
+        obter_ou_criar_formas_padrao_pdv(tenant)
     if conta_financeira.tenant_id != tenant.pk:
         raise SalesError("Conta financeira pertence a outro tenant.")
     if saldo_inicial < ZERO:
@@ -309,10 +316,10 @@ def models_sum(campo):
 
 
 def adicionar_item(venda, produto, quantidade, *, usuario=None):
-    """Adiciona produto à venda congelando o preço e baixando estoque.
+    """Adiciona produto à venda congelando o preço.
 
-    Se o produto já está no carrinho os quantidades são somadas (merge),
-    baixando apenas a diferença do estoque.
+    O PDV não altera estoque. Se o produto já está no carrinho, as
+    quantidades são somadas (merge).
     """
     if produto.tenant_id != venda.tenant_id:
         raise SalesError("Produto pertence a outro tenant.")
@@ -341,12 +348,6 @@ def adicionar_item(venda, produto, quantidade, *, usuario=None):
                     Decimal("0.01")
                 ),
             )
-            registrar_venda(
-                produto,
-                quantidade,
-                usuario=usuario,
-                referencia=str(venda.uuid),
-            )
         else:
             # Merge: soma a quantidade informada à já existente.
             item.quantidade += quantidade
@@ -354,30 +355,18 @@ def adicionar_item(venda, produto, quantidade, *, usuario=None):
                 Decimal("0.01")
             )
             item.save(update_fields=["quantidade", "subtotal"])
-            registrar_venda(
-                produto,
-                quantidade,
-                usuario=usuario,
-                referencia=str(venda.uuid),
-            )
         _recalcular_totais(venda)
     return item
 
 
 def remover_item(venda, item, *, usuario=None):
-    """Remove item do carrinho devolvendo o estoque."""
+    """Remove item do carrinho."""
     if item.venda_id != venda.pk:
         raise SalesError("Item não pertence à venda informada.")
     with transaction.atomic():
         venda = Venda.objects.select_for_update().get(pk=venda.pk)
         _venda_aberta(venda)
         item = ItemVenda.objects.select_for_update().get(pk=item.pk)
-        registrar_devolucao(
-            item.produto,
-            item.quantidade,
-            usuario=usuario,
-            referencia=str(venda.uuid),
-        )
         item.delete()
         _recalcular_totais(venda)
     return venda
@@ -432,17 +421,29 @@ def _total_pago(venda) -> Decimal:
     )
 
 
-def finalizar_venda(venda, *, usuario=None):
+def finalizar_venda(venda, *, usuario=None, forma_pagamento=None):
     """Finaliza a venda transacionalmente.
 
-    Exige ≥1 pagamento somando exatamente o total. À vista gera entrada
-    na conta do caixa; fiado gera ContaReceber (uma parcela).
+    Fluxo padrão do PDV: com ``forma_pagamento`` informada, registra o
+    pagamento do valor restante com essa forma e finaliza. Sem forma,
+    exige pagamentos somando exatamente o total.
+
+    À vista (Dinheiro) gera entrada na conta do caixa; cartão/PIX geram
+    ContaReceber (pagamento via maquininha, sem conexão com o sistema).
     """
     with transaction.atomic():
         venda = Venda.objects.select_for_update().get(pk=venda.pk)
         _venda_aberta(venda)
         if not venda.itens.exists():
             raise SalesError("Venda sem itens não pode ser finalizada.")
+        if forma_pagamento is not None:
+            if forma_pagamento.tenant_id != venda.tenant_id:
+                raise SalesError("Forma de pagamento pertence a outro tenant.")
+            pago = _total_pago(venda)
+            if pago < venda.total:
+                adicionar_pagamento(
+                    venda, forma_pagamento, venda.total - pago
+                )
         pago = _total_pago(venda)
         if pago == ZERO:
             raise SalesError("Venda sem pagamentos.")
@@ -501,13 +502,12 @@ def finalizar_venda(venda, *, usuario=None):
 
 
 def cancelar_venda(venda, *, motivo="", usuario=None):
-    """Cancela venda devolvendo estoque e estornando financeiro.
+    """Cancela venda estornando o financeiro.
 
-    - ABERTA: devolve estoque dos itens; pagamentos ainda não afetaram
-      financeiro, nada a estornar.
-    - FINALIZADA: devolve estoque, estorna cada ENTRADA da venda com
-      ESTORNO_ENTRADA e cancela ContaReceber pendente de origem VENDA.
-    Registros nunca são apagados.
+    - ABERTA: pagamentos ainda não afetaram financeiro, nada a estornar.
+    - FINALIZADA: estorna cada ENTRADA da venda com ESTORNO_ENTRADA e
+      cancela ContaReceber pendente de origem VENDA.
+    Registros nunca são apagados. O PDV não altera estoque.
     """
     if venda.status == Venda.Status.CANCELADA:
         raise SalesError("Venda já está cancelada.")
@@ -517,13 +517,6 @@ def cancelar_venda(venda, *, motivo="", usuario=None):
         venda = Venda.objects.select_for_update().get(pk=venda.pk)
         if venda.status == Venda.Status.CANCELADA:
             raise SalesError("Venda já está cancelada.")
-        for item in venda.itens.select_related("produto"):
-            registrar_devolucao(
-                item.produto,
-                item.quantidade,
-                usuario=usuario,
-                referencia=f"cancelamento:{venda.uuid}",
-            )
         if venda.status == Venda.Status.FINALIZADA:
             _estornar_entradas_da_venda(venda, motivo, usuario)
             _cancelar_recebiveis_da_venda(venda, usuario)

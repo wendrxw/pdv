@@ -1,27 +1,17 @@
 from django import forms
 
-from apps.financial.models import ContaFinanceira, FormaPagamento
+from apps.financial.models import FormaPagamento
 
 
 class AbrirCaixaForm(forms.Form):
-    conta_financeira = forms.ModelChoiceField(
-        label="Conta do caixa",
-        queryset=ContaFinanceira.objects.none(),
-    )
     saldo_inicial = forms.DecimalField(
         label="Saldo inicial (troco)",
         max_digits=14,
         decimal_places=2,
         min_value=0,
         initial=0,
+        required=False,
     )
-
-    def __init__(self, *args, tenant=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if tenant is not None:
-            self.fields["conta_financeira"].queryset = (
-                ContaFinanceira.objects.for_tenant(tenant).filter(ativo=True)
-            )
 
 
 class MovimentacaoCaixaForm(forms.Form):
@@ -47,6 +37,7 @@ class PagamentoVendaForm(forms.Form):
     forma_pagamento = forms.ModelChoiceField(
         label="Forma de pagamento",
         queryset=FormaPagamento.objects.none(),
+        to_field_name="uuid",
     )
     valor = forms.DecimalField(
         label="Valor", max_digits=14, decimal_places=2, min_value=0.01

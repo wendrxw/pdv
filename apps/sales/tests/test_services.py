@@ -5,9 +5,8 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.companies.models import Tenant
-from apps.financial.models import ContaFinanceira, ContaReceber
+from apps.financial.models import ContaFinanceira, ContaReceber, FormaPagamento
 from apps.financial.services import criar_conta, criar_forma_pagamento
-from apps.inventory.models import MovimentacaoEstoque
 from apps.inventory.services import adicionar_estoque
 from apps.products.models import Produto
 
@@ -154,7 +153,7 @@ class FechamentoCaixaTest(SalesBaseTestCase):
 
 
 class VendaAvistaTest(SalesBaseTestCase):
-    def test_fluxo_completo_baixa_estoque_e_credita_financeiro(self):
+    def test_fluxo_completo_credita_financeiro(self):
         venda = self._venda_com_item(Decimal("2"))
         adicionar_pagamento(venda, self.dinheiro, venda.total)
         finalizar_venda(venda, usuario=self.operador)
@@ -162,14 +161,6 @@ class VendaAvistaTest(SalesBaseTestCase):
         venda.refresh_from_db()
         self.assertEqual(venda.status, Venda.Status.FINALIZADA)
         self.assertEqual(venda.total, Decimal("20.00"))
-        self.produto.refresh_from_db()
-        estoque = self.produto.estoque
-        self.assertEqual(estoque.quantidade, Decimal("98"))
-        self.assertTrue(
-            MovimentacaoEstoque.objects.filter(
-                produto=self.produto, tipo=MovimentacaoEstoque.Tipo.VENDA
-            ).exists()
-        )
         self.conta.refresh_from_db()
         self.assertEqual(self.conta.saldo_atual, Decimal("70.00"))
 
@@ -190,8 +181,6 @@ class VendaAvistaTest(SalesBaseTestCase):
         adicionar_item(venda, self.produto, Decimal("2"))
         item = ItemVenda.objects.get(venda=venda)
         self.assertEqual(item.quantidade, Decimal("3"))
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.estoque.quantidade, Decimal("97"))
 
 
 class DescontoTest(SalesBaseTestCase):
@@ -239,6 +228,36 @@ class PagamentoTest(SalesBaseTestCase):
         with self.assertRaises(SalesError):
             finalizar_venda(venda)
 
+    def test_finalizar_com_forma_registra_pagamento_total(self):
+        venda = self._venda_com_item(Decimal("2"))  # total 20
+        finalizar_venda(venda, usuario=self.operador, forma_pagamento=self.dinheiro)
+        venda.refresh_from_db()
+        self.assertEqual(venda.status, Venda.Status.FINALIZADA)
+        pagamento = venda.pagamentos.get()
+        self.assertEqual(pagamento.forma_pagamento, self.dinheiro)
+        self.assertEqual(pagamento.valor, Decimal("20.00"))
+        self.conta.refresh_from_db()
+        self.assertEqual(self.conta.saldo_atual, Decimal("70.00"))
+
+    def test_finalizar_com_forma_completa_pagamento_parcial(self):
+        venda = self._venda_com_item(Decimal("2"))  # total 20
+        adicionar_pagamento(venda, self.dinheiro, Decimal("5"))
+        finalizar_venda(venda, usuario=self.operador, forma_pagamento=self.fiado)
+        venda.refresh_from_db()
+        self.assertEqual(venda.status, Venda.Status.FINALIZADA)
+        self.assertEqual(
+            sum(p.valor for p in venda.pagamentos.all()), Decimal("20.00")
+        )
+
+    def test_finalizar_com_forma_de_outro_tenant_rejeitado(self):
+        outro_tenant = Tenant.objects.create(nome="Outra Loja")
+        forma_alheia = criar_forma_pagamento(
+            outro_tenant, nome="Cartão alheio", codigo="OUTRO"
+        )
+        venda = self._venda_com_item(Decimal("2"))
+        with self.assertRaises(SalesError):
+            finalizar_venda(venda, forma_pagamento=forma_alheia)
+
 
 class VendaFiadoTest(SalesBaseTestCase):
     def test_forma_fiado_gera_conta_receber(self):
@@ -265,15 +284,13 @@ class VendaFiadoTest(SalesBaseTestCase):
 
 
 class CancelamentoVendaTest(SalesBaseTestCase):
-    def test_cancelar_venda_aberta_devolve_estoque(self):
+    def test_cancelar_venda_aberta(self):
         venda = self._venda_com_item(Decimal("4"))
         cancelar_venda(venda, motivo="Erro do operador", usuario=self.operador)
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.estoque.quantidade, Decimal("100"))
         venda.refresh_from_db()
         self.assertEqual(venda.status, Venda.Status.CANCELADA)
 
-    def test_cancelar_venda_finalizada_devolve_estoque_e_estorna(self):
+    def test_cancelar_venda_finalizada_estorna(self):
         venda = self._venda_com_item(Decimal("2"))
         adicionar_pagamento(venda, self.dinheiro, venda.total)
         finalizar_venda(venda)  # caixa: 50 → 70
@@ -281,8 +298,6 @@ class CancelamentoVendaTest(SalesBaseTestCase):
 
         self.conta.refresh_from_db()
         self.assertEqual(self.conta.saldo_atual, Decimal("50.00"))
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.estoque.quantidade, Decimal("100"))
 
         from apps.financial.models import MovimentacaoFinanceira
 
@@ -296,13 +311,50 @@ class CancelamentoVendaTest(SalesBaseTestCase):
         with self.assertRaises(SalesError):
             cancelar_venda(venda, motivo="")
 
-    def test_remover_item_devolve_estoque(self):
+    def test_remover_item(self):
         venda = self._venda_com_item(Decimal("2"))
         item = venda.itens.get()
         remover_item(venda, item, usuario=self.operador)
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.estoque.quantidade, Decimal("100"))
         self.assertFalse(ItemVenda.objects.filter(pk=item.pk).exists())
+
+
+class AbrirCaixaAutomaticoTest(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(nome="Loja Zero")
+        self.operador = User.objects.create_user(
+            username="zero", password="senha-12345", tenant=self.tenant
+        )
+
+    def test_abrir_caixa_cria_conta_principal_e_formas_padrao(self):
+        caixa = abrir_caixa(self.tenant, operador=self.operador)
+        self.assertEqual(caixa.conta_financeira.nome, "Caixa Principal")
+        self.assertEqual(caixa.conta_financeira.tipo, ContaFinanceira.Tipo.CAIXA)
+        codigos = set(
+            FormaPagamento.objects.for_tenant(self.tenant).values_list(
+                "codigo", flat=True
+            )
+        )
+        self.assertEqual(
+            codigos, {"DINHEIRO", "CREDITO", "DEBITO", "PIX"}
+        )
+
+    def test_aberturas_seguintes_reutilizam_conta_principal(self):
+        abrir_caixa(self.tenant, operador=self.operador)
+        outro = User.objects.create_user(
+            username="colega-zero", password="senha-12345", tenant=self.tenant
+        )
+        caixa = abrir_caixa(self.tenant, operador=outro)
+        self.assertEqual(caixa.conta_financeira.nome, "Caixa Principal")
+        self.assertEqual(ContaFinanceira.objects.for_tenant(self.tenant).count(), 1)
+
+    def test_conta_informada_ainda_e_suportada(self):
+        conta = criar_conta(
+            self.tenant, nome="Gaveta", tipo=ContaFinanceira.Tipo.CAIXA
+        )
+        caixa = abrir_caixa(
+            self.tenant, operador=self.operador, conta_financeira=conta
+        )
+        self.assertEqual(caixa.conta_financeira, conta)
 
 
 class VendasMultiTenantTest(TestCase):

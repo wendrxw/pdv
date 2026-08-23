@@ -20,12 +20,11 @@
 
     <aside class="bg-white rounded-xl border border-slate-200 p-6 h-fit">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Abrir novo caixa</h2>
+        <p class="text-sm text-slate-500 mb-4">
+            O caixa usa automaticamente a conta principal do seu ambiente.
+        </p>
         <form method="post" class="space-y-4">
             {% csrf_token %}
-            <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ form.conta_financeira.label }}</label>
-                {{ form.conta_financeira }}
-            </div>
             <div>
                 <label class="block text-sm text-slate-600 mb-1">{{ form.saldo_inicial.label }}</label>
                 {{ form.saldo_inicial }}

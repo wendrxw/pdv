@@ -143,6 +143,87 @@ def criar_forma_pagamento(
     return forma
 
 
+def obter_ou_criar_conta_principal(tenant):
+    """Conta principal do tenant, usada pelo PDV ao abrir o caixa.
+
+    Procura uma conta CAIXA ativa; se não existir, cria "Caixa Principal".
+    """
+    conta = (
+        ContaFinanceira.objects.for_tenant(tenant)
+        .filter(tipo=ContaFinanceira.Tipo.CAIXA, ativo=True)
+        .order_by("data_cadastro")
+        .first()
+    )
+    if conta is None:
+        conta = criar_conta(
+            tenant, nome="Caixa Principal", tipo=ContaFinanceira.Tipo.CAIXA
+        )
+    return conta
+
+
+def obter_ou_criar_forma_dinheiro(tenant):
+    """Forma de pagamento padrão do PDV (Dinheiro), criada se necessário."""
+    forma = (
+        FormaPagamento.objects.for_tenant(tenant)
+        .filter(codigo=FormaPagamento.Codigo.DINHEIRO, ativo=True)
+        .first()
+    )
+    if forma is None:
+        forma = criar_forma_pagamento(
+            tenant, nome="Dinheiro", codigo=FormaPagamento.Codigo.DINHEIRO
+        )
+    return forma
+
+
+_FORMAS_PADRAO_PDV = (
+    {
+        "nome": "Dinheiro",
+        "codigo": FormaPagamento.Codigo.DINHEIRO,
+        "gera_conta_receber": False,
+    },
+    {
+        "nome": "Cartão de crédito",
+        "codigo": FormaPagamento.Codigo.CREDITO,
+        "gera_conta_receber": True,
+    },
+    {
+        "nome": "Cartão de débito",
+        "codigo": FormaPagamento.Codigo.DEBITO,
+        "gera_conta_receber": True,
+    },
+    {
+        "nome": "PIX",
+        "codigo": FormaPagamento.Codigo.PIX,
+        "gera_conta_receber": True,
+    },
+)
+
+
+def obter_ou_criar_formas_padrao_pdv(tenant):
+    """Garante as formas de pagamento padrão do PDV.
+
+    Dinheiro, cartão de crédito, cartão de débito e PIX. Cartão e PIX são
+    recebidos via maquininha (sem conexão com o sistema), portanto geram
+    ContaReceber em vez de entrada imediata no caixa.
+    """
+    formas = []
+    for dados in _FORMAS_PADRAO_PDV:
+        forma = (
+            FormaPagamento.objects.for_tenant(tenant)
+            .filter(codigo=dados["codigo"])
+            .first()
+        )
+        if forma is None:
+            forma = criar_forma_pagamento(
+                tenant,
+                nome=dados["nome"],
+                codigo=dados["codigo"],
+                gera_conta_receber=dados["gera_conta_receber"],
+            )
+        formas.append(forma)
+    return formas
+
+
 # ---------------------------------------------------------------------------
 # Entradas
 # ---------------------------------------------------------------------------

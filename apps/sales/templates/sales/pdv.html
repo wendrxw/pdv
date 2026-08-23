@@ -21,13 +21,19 @@
                         {% csrf_token %}
                         <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-3 text-base font-bold text-white hover:bg-emerald-700">Nova venda</button>
                     </form>
-                    <a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium hover:bg-slate-50 self-center">Conferir</a>
+                    <a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium hover:bg-slate-50 self-center">Conferir / Fechar caixa</a>
                 </div>
             </div>
         {% empty %}
-            <p class="text-slate-500 bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center">
-                Nenhum caixa aberto. Abra um caixa ao lado para começar a vender.
-            </p>
+            <div class="bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                <p class="text-slate-500">Nenhum caixa aberto. Abra um caixa ao lado para começar a vender.</p>
+                <form method="post" action="{% url 'sales:nova_venda_rapida' %}" class="mt-4">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-3 text-base font-bold text-white hover:bg-emerald-700">
+                        Iniciar venda agora (abre o caixa automaticamente)
+                    </button>
+                </form>
+            </div>
         {% endfor %}
 
         {% if vendas_abertas %}
@@ -43,13 +49,11 @@
 
     <aside class="bg-white rounded-xl border border-slate-200 p-6 h-fit">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Abrir caixa</h2>
+        <p class="text-sm text-slate-500 mb-4">
+            O caixa usa automaticamente a conta principal do seu ambiente.
+        </p>
         <form method="post" class="space-y-4">
             {% csrf_token %}
-            <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ form.conta_financeira.label }}</label>
-                {{ form.conta_financeira }}
-                {% if form.conta_financeira.errors %}<p class="text-sm text-red-600 mt-1">{{ form.conta_financeira.errors.0 }}</p>{% endif %}
-            </div>
             <div>
                 <label class="block text-sm text-slate-600 mb-1">{{ form.saldo_inicial.label }}</label>
                 {{ form.saldo_inicial }}
