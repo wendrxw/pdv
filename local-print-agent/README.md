@@ -103,6 +103,7 @@ automático); com `PRINTER_ESCPOS=1` (padrão) o agente usa ESC/POS
 | `PRINTER_CODEPAGE` | `utf8` | `utf8` ou `cp850` (acentos via `ESC t 2`). |
 | `PRINTER_ESCPOS` | `1` | `0` desativa ESC/POS (texto puro estilo printf; indicado p/ Tomate MDK-080). |
 | `PRINTER_CORTE_PARCIAL` | `1` | `0` para corte total (`GS V 0`). |
+| `PRINTER_ALIMENTACAO_FINAL` | `8` | Linhas em branco no fim do comprovante (folga para o corte/rasgo não pegar o conteúdo). |
 | `PRINT_AGENT_POLL_INTERVAL` | `3` | Segundos entre polls. |
 | `PRINT_AGENT_HTTP_TIMEOUT` | `30` | Timeout HTTP em segundos. |
 | `PRINT_AGENT_STATE_DIR` | `~/.print-agent` | Estado local (credencial + dedupe). |

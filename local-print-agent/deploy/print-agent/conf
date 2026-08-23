@@ -21,5 +21,9 @@ export PRINTER_CODEPAGE=utf8
 # estilo printf (indicado p/ Tomate MDK-080, firmware restrito).
 export PRINTER_ESCPOS=1
 
+# Linhas em branco no fim do comprovante: folga para o corte/rasgo não
+# ficar em cima do conteúdo impresso.
+export PRINTER_ALIMENTACAO_FINAL=8
+
 # Intervalo de polling em segundos.
 export PRINT_AGENT_POLL_INTERVAL=3

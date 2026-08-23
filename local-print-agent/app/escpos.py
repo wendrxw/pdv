@@ -55,8 +55,12 @@ class EscPosPrinter:
             return NEGRITO + b"\x01"
         return NEGRITO + b"\x00"
 
-    def render(self, linhas, alimentar_antes_de_cortar=4):
-        """``linhas``: lista de (texto, estilo) → bytes completos do job."""
+    def render(self, linhas, alimentar_antes_de_cortar=8):
+        """``linhas``: lista de (texto, estilo) → bytes completos do job.
+
+        ``alimentar_antes_de_cortar`` são as linhas em branco no fim, para
+        que o corte não caia sobre o conteúdo impresso.
+        """
         saida = bytearray()
         saida += self.inicializar()
         for texto, estilo in linhas:

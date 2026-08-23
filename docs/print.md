@@ -176,7 +176,13 @@ Configuração recomendada para a MDK-080 em
 export PRINTER_DEVICE=/dev/usb/lp0
 export PRINTER_ESCPOS=0        # texto puro (printf), firmware MDK-080
 export PRINT_AGENT_LARGURA_PADRAO=58
+export PRINTER_ALIMENTACAO_FINAL=8   # folga p/ o rasgo não pegar o texto
 ```
+
+**Folga no fim do comprovante**: por padrão o agente avança 8 linhas em
+branco após o conteúdo (ESC/POS: `ESC d 8` antes do corte; texto puro:
+`\n` × 8), para o corte/rasgo nunca cair sobre a nota. Ajuste conforme a
+distância da guilhotina/barra de rasgo com `PRINTER_ALIMENTACAO_FINAL`.
 
 As térmicas tradicionais (Elgin, Bematech, Epson etc.) continuam usando
 ESC/POS (`PRINTER_ESCPOS=1`, padrão) para realce e corte automático.

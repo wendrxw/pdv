@@ -33,9 +33,12 @@ class EscPosTest(unittest.TestCase):
     def test_termina_com_alimentacao_e_corte(self):
         impressora = EscPosPrinter(cortar_parcial=True)
         dados = impressora.render([("linha", "normal")])
-        self.assertTrue(dados.endswith(b"\x1bd\x04\x1dv\x42\x01"))
-        total = EscPosPrinter(cortar_parcial=False).render([("a", "normal")])
-        self.assertTrue(total.endswith(b"\x1dv\x42\x00"))
+        # Padrão: 8 linhas de folga antes do corte (folga para o rasgo).
+        self.assertTrue(dados.endswith(b"\x1bd\x08\x1dv\x42\x01"))
+        total = EscPosPrinter(cortar_parcial=False).render(
+            [("a", "normal")], alimentar_antes_de_cortar=3
+        )
+        self.assertTrue(total.endswith(b"\x1bd\x03\x1dv\x42\x00"))
 
     def test_utf8_com_acentos(self):
         impressora = EscPosPrinter(codepage="utf8")

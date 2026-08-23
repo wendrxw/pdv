@@ -131,13 +131,18 @@ class PrintAgent:
                 cortar_parcial=self.config.cortar_parcial,
             )
             if self.config.escpos:
-                dados_impressao = impressora_escpos.render(linhas)
+                dados_impressao = impressora_escpos.render(
+                    linhas,
+                    alimentar_antes_de_cortar=self.config.alimentacao_final,
+                )
             else:
                 # Modo texto puro: mesmo efeito do comando
                 #   printf "..." > /dev/usb/lp0
                 # (impressoras sem ESC/POS confiável, ex.: Tomate MDK-080).
+                # Linhas em branco no fim dão folga para o corte/rasgo.
                 dados_impressao = (
-                    "\n".join(texto for texto, _estilo in linhas) + "\n\n\n"
+                    "\n".join(texto for texto, _estilo in linhas)
+                    + "\n" * self.config.alimentacao_final
                 ).encode("utf-8", errors="replace")
             self.impressora.escrever(dados_impressao)
         except (PrinterError, OSError) as exc:

@@ -100,9 +100,13 @@ def comando_test(config):
         codepage=config.codepage, cortar_parcial=config.cortar_parcial
     )
     dados = (
-        impressora_escpos.render(linhas)
+        impressora_escpos.render(
+            linhas, alimentar_antes_de_cortar=config.alimentacao_final
+        )
         if config.escpos
-        else ("\n".join(t for t, _ in linhas) + "\n\n\n").encode("utf-8")
+        else ("\n".join(t for t, _ in linhas) + "\n" * config.alimentacao_final).encode(
+            "utf-8"
+        )
     )
     impressora.escrever(dados)
     print("Página de teste enviada para", config.device)
