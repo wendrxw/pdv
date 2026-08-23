@@ -159,6 +159,10 @@ Gaps identificados para produção (numerados conforme o plano da §5):
 
 ### Fase 0 — Servidor
 
+> Guia completo passo a passo do servidor (sistema, banco, gunicorn,
+> nginx, HTTPS, backups, monitoramento e passos específicos da
+> impressão): [docs/producao-servidor.md](producao-servidor.md).
+
 1. Deploy Django em produção: PostgreSQL (`PDV_DB_ENGINE=postgres` +
    `PDV_DB_*`), `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY` forte,
    `DJANGO_ALLOWED_HOSTS` correto (padrão do projeto já cobre HSTS,
