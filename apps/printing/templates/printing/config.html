@@ -9,8 +9,10 @@
 <div class="max-w-3xl">
     <h1 class="text-2xl font-bold text-slate-900 mb-2">Configuração de impressão</h1>
     <p class="text-sm text-slate-500 mb-6">
-        Cabeçalho do comprovante, largura do papel e impressão automática.
-        Campos vazios usam os dados cadastrais da loja (módulo fiscal).
+        Cabeçalho do comprovante, largura do papel e estação padrão.
+        A impressão acontece <strong>sempre</strong> ao finalizar a venda
+        (confirmação do pagamento). Campos vazios usam os dados cadastrais
+        da loja (módulo fiscal).
     </p>
 
     <form method="post" class="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
@@ -37,12 +39,6 @@
                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.tentativas_maximas.label }}</label>
                 {{ form.tentativas_maximas }}
                 {% if form.tentativas_maximas.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tentativas_maximas.errors.0 }}</p>{% endif %}
-            </div>
-            <div class="flex items-end pb-2">
-                <div class="flex items-center gap-2">
-                    {{ form.impressao_automatica }}
-                    <label class="text-sm font-medium text-slate-700">{{ form.impressao_automatica.label }}</label>
-                </div>
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.nome_loja.label }}</label>

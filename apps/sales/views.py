@@ -18,7 +18,6 @@ from apps.printing.models import ConfiguracaoImpressao, PrintJob
 from apps.printing.services import (
     PrintingError,
     criar_print_job,
-    enfileirar_print_job_automatico,
     reativar_print_job,
 )
 from apps.products.models import Produto
@@ -219,10 +218,11 @@ def _executar_acao_venda(request, venda, acao):
         finalizar_venda(venda, usuario=usuario, forma_pagamento=forma)
         venda.refresh_from_db()
         messages.success(request, f"Venda {venda.numero} finalizada.")
-        # Impressão automática (por configuração da loja). Nunca bloqueia a
-        # venda: falha de impressão apenas avisa.
+        # Impressão OBRIGATÓRIA: ao confirmar o pagamento (finalização da
+        # venda) o comprovante é sempre enfileirado. Falha de impressão
+        # nunca bloqueia a venda — apenas avisa o operador.
         try:
-            enfileirar_print_job_automatico(venda, usuario=usuario)
+            criar_print_job(venda, usuario=usuario)
         except PrintingError as exc:
             messages.warning(request, f"Impressão: {exc}")
     elif acao == "cancelar":

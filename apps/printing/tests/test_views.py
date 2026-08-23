@@ -35,7 +35,6 @@ class ConfigImpressaoViewTest(ViewsBase):
             reverse("printing:config"),
             {
                 "largura": "80",
-                "impressao_automatica": "on",
                 "estacao_padrao": str(estacao.pk),
                 "tentativas_maximas": 7,
                 "nome_loja": "Loja Nova",
@@ -110,7 +109,7 @@ class StatusVendaViewTest(ViewsBase):
 
 
 class PdvIntegracaoTest(ViewsBase):
-    def test_finalizar_venda_enfileira_impressao_automatica(self):
+    def test_finalizar_venda_sempre_enfileira_comprovante(self):
         venda = abrir_venda(self.caixa)
         adicionar_item(venda, self.produto, Decimal("1"), usuario=self.operador)
         venda.refresh_from_db()
@@ -129,10 +128,9 @@ class PdvIntegracaoTest(ViewsBase):
             1,
         )
 
-    def test_finalizar_sem_impressao_automatica_nao_enfileira(self):
-        config = ConfiguracaoImpressao.carregar(self.tenant)
-        config.impressao_automatica = False
-        config.save()
+    def test_finalizar_sem_configuracao_tambem_enfileira(self):
+        # Impressão é OBRIGATÓRIA: mesmo sem nenhuma configuração manual,
+        # finalizar a venda enfileira o comprovante.
         venda = abrir_venda(self.caixa)
         adicionar_item(venda, self.produto, Decimal("1"), usuario=self.operador)
         venda.refresh_from_db()
@@ -145,14 +143,11 @@ class PdvIntegracaoTest(ViewsBase):
         )
         self.assertEqual(
             PrintJob.objects.for_tenant(self.tenant).filter(venda=venda).count(),
-            0,
+            1,
         )
 
     def test_detalhe_imprimir_cria_job_manual(self):
         venda = self.venda_finalizada()
-        config = ConfiguracaoImpressao.carregar(self.tenant)
-        config.impressao_automatica = False
-        config.save()
         resposta = self.client.post(
             reverse("sales:venda_detalhe", args=[venda.uuid]),
             {"acao": "imprimir"},

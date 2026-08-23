@@ -166,15 +166,6 @@ def criar_print_job(venda, *, estacao=None, usuario=None) -> PrintJob:
     return job
 
 
-def enfileirar_print_job_automatico(venda, *, usuario=None):
-    """Enfileira ao finalizar a venda, se a loja configurou impressão
-    automática. Retorna o PrintJob criado ou None."""
-    config = ConfiguracaoImpressao.carregar(venda.tenant)
-    if not config.impressao_automatica:
-        return None
-    return criar_print_job(venda, usuario=usuario)
-
-
 def obter_proximo_job(estacao) -> PrintJob | None:
     """Reivindica atômicamente o próximo trabalho da estação.
 

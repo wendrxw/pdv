@@ -18,7 +18,6 @@ from ..services import (
     PrintingError,
     autenticar_estacao,
     criar_print_job,
-    enfileirar_print_job_automatico,
     gerar_codigo_pareamento,
     marcar_falha,
     marcar_impresso,
@@ -136,16 +135,20 @@ class PrintJobTest(PrintingBaseTestCase):
         segundo = criar_print_job(venda)
         self.assertNotEqual(primeiro.pk, segundo.pk)
 
-    def test_automatica_cria_job_apenas_se_configurada(self):
+    def test_job_obrigatorio_nao_depende_de_configuracao_previa(self):
+        # Impressão é obrigatória ao finalizar: sem config manual, a
+        # configuração padrão é criada e o job enfileirado.
         venda = self.venda_finalizada()
-        config = ConfiguracaoImpressao.carregar(self.tenant)
-        self.assertTrue(config.impressao_automatica)
-        job = enfileirar_print_job_automatico(venda)
+        self.assertEqual(
+            ConfiguracaoImpressao.objects.filter(tenant=self.tenant).count(),
+            0,
+        )
+        job = criar_print_job(venda, usuario=self.operador)
         self.assertIsNotNone(job)
-        config.impressao_automatica = False
-        config.save()
-        venda2 = self.venda_finalizada()
-        self.assertIsNone(enfileirar_print_job_automatico(venda2))
+        self.assertEqual(
+            ConfiguracaoImpressao.objects.filter(tenant=self.tenant).count(),
+            1,
+        )
 
 
 class FilaTest(PrintingBaseTestCase):

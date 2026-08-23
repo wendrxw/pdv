@@ -4,6 +4,9 @@ O servidor remoto NUNCA toca a impressora física: ele apenas produz
 PrintJobs com o snapshot serializável da venda. Quem imprime é o Local
 Print Agent, executado na máquina da loja, que faz polling nesta API.
 
+A impressão é OBRIGATÓRIA ao final de cada venda (confirmação do
+pagamento): a view de finalização sempre enfileira um PrintJob.
+
 Cada estação (terminal da loja) possui credencial própria; o token é
 armazenado apenas como hash bcrypt e nunca é retornado após o pareamento.
 """
@@ -37,14 +40,6 @@ class ConfiguracaoImpressao(TenantAwareModel):
         max_length=2,
         choices=Largura.choices,
         default=Largura.MM58,
-    )
-    impressao_automatica = models.BooleanField(
-        "impressão automática",
-        default=True,
-        help_text=(
-            "Quando ativa, um PrintJob é enfileirado automaticamente ao "
-            "finalizar cada venda."
-        ),
     )
     estacao_padrao = models.ForeignKey(
         "EstacaoImpressao",
