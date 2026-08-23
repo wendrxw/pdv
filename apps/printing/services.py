@@ -166,6 +166,35 @@ def criar_print_job(venda, *, estacao=None, usuario=None) -> PrintJob:
     return job
 
 
+def classificar_status_impressao(job, tenant) -> str:
+    """Estado amigável do painel do PDV para o PrintJob (ou sua ausência).
+
+    - SEM_JOB: nenhum job para a venda (botão de imprimir);
+    - PROCESSING: agente reivindicou e está imprimindo;
+    - PRINTED / FAILED: estados finais;
+    - AGUARDANDO_IMPRESSORA: job na fila/retry e existe estação ativa
+      (o agente pega em segundos);
+    - AGUARDANDO_AGENTE: job na fila/retry mas NENHUMA estação ativa —
+      sem agente a loja nunca imprime (diagnóstico exibido no painel).
+    """
+    if job is None:
+        return "SEM_JOB"
+    if job.status in (
+        PrintJob.Status.PROCESSING,
+        PrintJob.Status.PRINTED,
+        PrintJob.Status.FAILED,
+    ):
+        return job.status
+    tem_estacao_ativa = (
+        EstacaoImpressao.objects.for_tenant(tenant)
+        .filter(status=EstacaoImpressao.Status.ATIVA)
+        .exists()
+    )
+    if tem_estacao_ativa:
+        return "AGUARDANDO_IMPRESSORA"
+    return "AGUARDANDO_AGENTE"
+
+
 def obter_proximo_job(estacao) -> PrintJob | None:
     """Reivindica atômicamente o próximo trabalho da estação.
 

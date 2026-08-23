@@ -96,16 +96,32 @@ class StatusVendaViewTest(ViewsBase):
     def test_status_sem_job(self):
         venda = self.venda_finalizada()
         resposta = self.client.get(reverse("printing:status_venda", args=[venda.uuid]))
-        self.assertEqual(resposta.json(), {"job": None})
+        self.assertEqual(resposta.json()["estado"], "SEM_JOB")
+        self.assertIsNone(resposta.json()["job"])
 
-    def test_status_com_job(self):
+    def test_status_pendente_sem_estacao(self):
         from ..services import criar_print_job
 
         venda = self.venda_finalizada()
         job = criar_print_job(venda)
         resposta = self.client.get(reverse("printing:status_venda", args=[venda.uuid]))
-        self.assertEqual(resposta.json()["job"]["status"], "PENDING")
-        self.assertEqual(resposta.json()["job"]["uuid"], str(job.uuid))
+        dados = resposta.json()
+        self.assertEqual(dados["job"]["status"], "PENDING")
+        self.assertEqual(dados["job"]["uuid"], str(job.uuid))
+        # Sem estação ativa, o painel avisa que falta o agente.
+        self.assertEqual(dados["estado"], "AGUARDANDO_AGENTE")
+        self.assertEqual(dados["estacoes"]["ativas"], 0)
+
+    def test_status_pendente_com_estacao_ativa(self):
+        from ..services import criar_print_job
+
+        EstacaoImpressao.objects.create(tenant=self.tenant, nome="Caixa 01")
+        venda = self.venda_finalizada()
+        criar_print_job(venda)
+        resposta = self.client.get(reverse("printing:status_venda", args=[venda.uuid]))
+        dados = resposta.json()
+        self.assertEqual(dados["estado"], "AGUARDANDO_IMPRESSORA")
+        self.assertEqual(dados["estacoes"]["ativas"], 1)
 
 
 class PdvIntegracaoTest(ViewsBase):
@@ -180,6 +196,31 @@ class PdvIntegracaoTest(ViewsBase):
         venda = self.venda_finalizada()
         resposta = self.client.get(reverse("sales:venda_detalhe", args=[venda.uuid]))
         self.assertContains(resposta, "Imprimir comprovante")
+
+    def test_detalhe_com_job_sem_estacao_mostra_aguardando_agente(self):
+        # Venda finalizada gera job obrigatório; sem estação ativa o
+        # painel deve explicar que falta o agente (não só "Imprimindo...").
+        venda = abrir_venda(self.caixa)
+        adicionar_item(venda, self.produto, Decimal("1"), usuario=self.operador)
+        venda.refresh_from_db()
+        self.client.post(
+            reverse("sales:venda_tela", args=[venda.uuid]),
+            {"acao": "finalizar", "forma_pagamento": str(self.dinheiro.uuid)},
+        )
+        resposta = self.client.get(reverse("sales:venda_detalhe", args=[venda.uuid]))
+        self.assertContains(resposta, "Aguardando o agente de impressão")
+
+    def test_detalhe_com_job_e_estacao_mostra_aguardando_impressora(self):
+        EstacaoImpressao.objects.create(tenant=self.tenant, nome="Caixa 01")
+        venda = abrir_venda(self.caixa)
+        adicionar_item(venda, self.produto, Decimal("1"), usuario=self.operador)
+        venda.refresh_from_db()
+        self.client.post(
+            reverse("sales:venda_tela", args=[venda.uuid]),
+            {"acao": "finalizar", "forma_pagamento": str(self.dinheiro.uuid)},
+        )
+        resposta = self.client.get(reverse("sales:venda_detalhe", args=[venda.uuid]))
+        self.assertContains(resposta, "Aguardando impressora…")
 
     def test_cancelamento_pelo_detalhe_continua_funcionando(self):
         venda = abrir_venda(self.caixa)

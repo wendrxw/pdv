@@ -17,6 +17,7 @@ from apps.financial.models import FormaPagamento
 from apps.printing.models import ConfiguracaoImpressao, PrintJob
 from apps.printing.services import (
     PrintingError,
+    classificar_status_impressao,
     criar_print_job,
     reativar_print_job,
 )
@@ -360,6 +361,9 @@ def venda_detalhe(request, uuid):
             "pagamentos": venda.pagamentos.select_related("forma_pagamento"),
             "config_impressao": config,
             "print_job": print_job,
+            "estado_impressao": classificar_status_impressao(
+                print_job, tenant
+            ),
         },
     )
 
