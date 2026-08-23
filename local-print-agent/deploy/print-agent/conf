@@ -14,8 +14,14 @@ export PRINT_AGENT_PAIR_CODE=
 # Dispositivo da impressora térmica USB (usblp). Padrão: /dev/usb/lp0.
 export PRINTER_DEVICE=/dev/usb/lp0
 
-# Codificação: utf8 (padrão) ou cp850.
-export PRINTER_CODEPAGE=utf8
+# Codificação dos acentos: utf8 (padrão) ou cp850/cp860/cp1252/latin1.
+# Firmware antigo (ex.: Tomate MDK-080) NÃO entende UTF-8: use cp850
+# (ou rode 'python3 -m app.main codepage-test' para ver qual funciona).
+export PRINTER_CODEPAGE=cp850
+
+# 1 = envia ESC t n no início para selecionar a tabela na impressora
+# (mesmo em modo texto); 0 = não envia.
+export PRINTER_SELECIONAR_CODEPAGE=1
 
 # ESC/POS: 1 = comandos ESC/POS (Elgin/Bematech/Epson); 0 = texto puro
 # estilo printf (indicado p/ Tomate MDK-080, firmware restrito).

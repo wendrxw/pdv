@@ -4,7 +4,11 @@ import os
 import tempfile
 import unittest
 
-from app.escpos import EscPosPrinter
+from app.escpos import (
+    EscPosPrinter,
+    normalizar_texto,
+    selecionar_codepage,
+)
 from app.printer import FakePrinterDevice, PrinterError, UsbPrinterDevice
 
 
@@ -43,13 +47,28 @@ class EscPosTest(unittest.TestCase):
     def test_utf8_com_acentos(self):
         impressora = EscPosPrinter(codepage="utf8")
         dados = impressora.render([("Café — Água", "normal")])
-        self.assertIn("Café — Água".encode("utf-8"), dados)
+        # Travessão é normalizado para hífen (sem representação segura).
+        self.assertIn("Café - Água".encode("utf-8"), dados)
 
     def test_cp850_seleciona_codepage_e_codifica(self):
         impressora = EscPosPrinter(codepage="cp850")
         dados = impressora.render([("Café", "normal")])
         self.assertIn(b"\x1bt\x02", dados)
         self.assertIn("Café".encode("cp850"), dados)
+
+    def test_cp860_e_cp1252(self):
+        self.assertEqual(selecionar_codepage("cp860"), b"\x1bt\x03")
+        self.assertEqual(selecionar_codepage("cp1252"), b"\x1bt\x10")
+        self.assertEqual(selecionar_codepage("utf8"), b"")
+        self.assertEqual(selecionar_codepage("latin1"), b"")
+        for codepage, encoding in (("cp860", "cp860"), ("cp1252", "cp1252")):
+            impressora = EscPosPrinter(codepage=codepage)
+            dados = impressora.render([("Café da Manhã", "normal")])
+            self.assertIn("Café da Manhã".encode(encoding), dados)
+
+    def test_normalizar_texto_substitui_travessao(self):
+        self.assertEqual(normalizar_texto("Café — Água"), "Café - Água")
+        self.assertEqual(normalizar_texto("“citado”"), '"citado"')
 
 
 class FakePrinterDeviceTest(unittest.TestCase):

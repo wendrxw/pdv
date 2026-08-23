@@ -175,9 +175,20 @@ Configuração recomendada para a MDK-080 em
 ```sh
 export PRINTER_DEVICE=/dev/usb/lp0
 export PRINTER_ESCPOS=0        # texto puro (printf), firmware MDK-080
+export PRINTER_CODEPAGE=cp850  # acentos em 1 byte (firmware não entende UTF-8)
 export PRINT_AGENT_LARGURA_PADRAO=58
 export PRINTER_ALIMENTACAO_FINAL=8   # folga p/ o rasgo não pegar o texto
 ```
+
+**Acentos**: o firmware da MDK-080 interpreta os bytes como tabela de 1
+byte — UTF-8 sai como símbolos lixo. Com `PRINTER_CODEPAGE=cp850` (ou
+`cp860`/`cp1252`) o agente codifica cada acento em 1 byte e envia
+`ESC t n` no início para selecionar a tabela (desativável com
+`PRINTER_SELECIONAR_CODEPAGE=0`). Para descobrir a tabela certa em
+campo, rode `python -m app.main codepage-test`: a página imprime a mesma
+frase em UTF-8, CP850, CP860 e CP1252 rotuladas — defina a que sair
+correta. Caracteres sem representação (ex.: travessão `—`) são
+normalizados para hífen.
 
 **Folga no fim do comprovante**: por padrão o agente avança 8 linhas em
 branco após o conteúdo (ESC/POS: `ESC d 8` antes do corte; texto puro:
@@ -233,7 +244,7 @@ O painel do PDV mostra exatamente onde está o gargalo:
 | `Aguardando impressora…` (eterno) | Agente parado/morto, ou impressora desligada/desconectada. | Verificar processo/serviço (`sv status print-agent`), cabo USB e `ls -l /dev/usb/lp0`; conferir logs do agente. |
 | `Imprimindo...` (eterno) | Impressora morreu no meio da escrita. | O lease (5 min) devolve o job à fila; o agente reimprime após o backoff (uuid evita duplicidade). |
 | Nada sai, sem erro | Permissão do dispositivo. | Usuário precisa do grupo `lp`: `groups` deve listar `lp`; testar com `python -m app.main raw-test` (equivalente a `printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0`). |
-| Só sai "?"/lixo | Codificação/firmware. | Tentar `PRINTER_CODEPAGE=cp850` ou `PRINTER_ESCPOS=0` (texto puro). |
+| Só sai "?"/lixo | Codificação/firmware. | Acentos quebrados: usar `PRINTER_CODEPAGE=cp850` (ou cp860/cp1252) e `python -m app.main codepage-test` para descobrir a tabela correta no papel. |
 
 Diagnóstico rápido na máquina da loja:
 

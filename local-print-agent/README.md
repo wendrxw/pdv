@@ -63,10 +63,11 @@ execução; após o pareamento, deixe a variável vazia.
 ## Uso
 
 ```bash
-python3 -m app.main run       # loop: autentica, poll, imprime, reporta
-python3 -m app.main pair      # apenas pareamento
-python3 -m app.main test      # página de teste na impressora (ESC/POS)
-python3 -m app.main raw-test  # teste em texto puro (printf > /dev/usb/lp0)
+python3 -m app.main run            # loop: autentica, poll, imprime, reporta
+python3 -m app.main pair           # apenas pareamento
+python3 -m app.main test           # página de teste na impressora (ESC/POS ou texto)
+python3 -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
+python3 -m app.main codepage-test  # amostra de acentos em várias codificações
 ```
 
 ## Modo texto puro (printf) — alternativa para a Tomate MDK-080
@@ -92,6 +93,20 @@ Com `PRINTER_ESCPOS=0` o comprovante sai em texto puro (sem realce/corte
 automático); com `PRINTER_ESCPOS=1` (padrão) o agente usa ESC/POS
 (Elgin, Bematech, Epson etc.).
 
+### Acentos quebrados?
+
+Se os acentos saem como símbolos estranhos, o firmware da impressora não
+entende UTF-8. Use uma codepage de 1 byte:
+
+```sh
+export PRINTER_CODEPAGE=cp850   # ou cp860 (português) / cp1252 (Windows)
+python3 -m app.main codepage-test
+```
+
+A página `codepage-test` imprime a mesma frase em UTF-8, CP850, CP860 e
+CP1252 (cada linha precedida da seleção da tabela). Veja no papel qual
+linha saiu correta e defina `PRINTER_CODEPAGE` com essa opção.
+
 ## Variáveis de ambiente
 
 | Variável | Padrão | Descrição |
@@ -100,7 +115,8 @@ automático); com `PRINTER_ESCPOS=1` (padrão) o agente usa ESC/POS
 | `PRINTER_DEVICE` | `/dev/usb/lp0` | Dispositivo da térmica (usblp). |
 | `PRINT_AGENT_PAIR_CODE` | — | Código de pareamento (uso único). |
 | `PRINT_AGENT_LARGURA_PADRAO` | `58` | Largura usada quando o payload não informa. |
-| `PRINTER_CODEPAGE` | `utf8` | `utf8` ou `cp850` (acentos via `ESC t 2`). |
+| `PRINTER_CODEPAGE` | `utf8` | Codificação dos acentos: `utf8`, `cp850`, `cp860` (português), `cp1252` (Windows) ou `latin1`. Impressoras de firmware antigo (MDK-080) precisam de `cp850`/`cp860`/`cp1252`. |
+| `PRINTER_SELECIONAR_CODEPAGE` | `1` | Envia `ESC t n` no início (mesmo em modo texto) para o firmware interpretar a tabela escolhida; `0` desativa. |
 | `PRINTER_ESCPOS` | `1` | `0` desativa ESC/POS (texto puro estilo printf; indicado p/ Tomate MDK-080). |
 | `PRINTER_CORTE_PARCIAL` | `1` | `0` para corte total (`GS V 0`). |
 | `PRINTER_ALIMENTACAO_FINAL` | `8` | Linhas em branco no fim do comprovante (folga para o corte/rasgo não pegar o conteúdo). |

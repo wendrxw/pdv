@@ -12,7 +12,12 @@ Garantias:
 import json
 import time
 
-from .escpos import EscPosPrinter
+from .escpos import (
+    CODEPAGEM_PARA_ENCODING,
+    EscPosPrinter,
+    normalizar_texto,
+    selecionar_codepage,
+)
 from .printer import PrinterError
 from .receipt import formatar_dados_comprovante, largura_papel
 
@@ -139,11 +144,22 @@ class PrintAgent:
                 # Modo texto puro: mesmo efeito do comando
                 #   printf "..." > /dev/usb/lp0
                 # (impressoras sem ESC/POS confiável, ex.: Tomate MDK-080).
+                # Os acentos seguem PRINTER_CODEPAGE — 1 byte por caractere
+                # para firmware antigo; o prefixo ESC t n seleciona a
+                # tabela (desativável com PRINTER_SELECIONAR_CODEPAGE=0).
                 # Linhas em branco no fim dão folga para o corte/rasgo.
-                dados_impressao = (
+                encoding = CODEPAGEM_PARA_ENCODING.get(self.config.codepage, "utf-8")
+                texto_comprovante = (
                     "\n".join(texto for texto, _estilo in linhas)
                     + "\n" * self.config.alimentacao_final
-                ).encode("utf-8", errors="replace")
+                )
+                dados_impressao = normalizar_texto(texto_comprovante).encode(
+                    encoding, errors="replace"
+                )
+                if self.config.selecionar_codepage:
+                    dados_impressao = (
+                        selecionar_codepage(self.config.codepage) + dados_impressao
+                    )
             self.impressora.escrever(dados_impressao)
         except (PrinterError, OSError) as exc:
             self._falhou(job_uuid, f"Erro na impressão: {exc}")

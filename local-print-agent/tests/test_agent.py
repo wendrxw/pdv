@@ -158,6 +158,30 @@ class ImpressaoTest(BaseAgentTest):
         dados = self.impressora.escritas[0]
         self.assertTrue(dados.endswith(b"\x1bd\x09\x1dv\x42\x01"))
 
+    def test_modo_texto_respeita_codepage_cp850(self):
+        # Acentos em 1 byte por caractere + seleção da tabela (ESC t 2) —
+        # firmware antigo (MDK-080) não entende UTF-8.
+        self.config.escpos = False
+        self.config.codepage = "cp850"
+        cliente = FakeCliente([{"job": {"uuid": "job-1", "payload": payload_venda()}}])
+        agente = self.montar(cliente)
+        agente.ciclo()
+        dados = self.impressora.escritas[0]
+        self.assertTrue(dados.startswith(b"\x1bt\x02"))
+        self.assertIn("Café".encode("cp850"), dados)
+        self.assertNotIn("Café".encode("utf-8"), dados)
+
+    def test_modo_texto_sem_selecao_de_codepage(self):
+        self.config.escpos = False
+        self.config.codepage = "cp850"
+        self.config.selecionar_codepage = False
+        cliente = FakeCliente([{"job": {"uuid": "job-1", "payload": payload_venda()}}])
+        agente = self.montar(cliente)
+        agente.ciclo()
+        dados = self.impressora.escritas[0]
+        self.assertFalse(dados.startswith(b"\x1bt"))
+        self.assertIn("Café".encode("cp850"), dados)
+
 
 class CredencialTest(unittest.TestCase):
     def test_salva_e_carrega_credencial(self):
