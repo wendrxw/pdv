@@ -57,6 +57,43 @@
             <p class="flex justify-between text-lg font-bold border-t pt-2"><span>Total</span><span>R$ {{ venda.total }}</span></p>
         </div>
 
+        {% if venda.status == "FINALIZADA" and config_impressao %}
+            <section id="painel-impressao" class="bg-white rounded-xl border border-slate-200 p-6"
+                     data-status-url="{% url 'printing:status_venda' venda.uuid %}"
+                     data-estado="{{ print_job.status|default:'NONE' }}"
+                     data-erro="{{ print_job.erro|default:'' }}">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Comprovante</h2>
+                <p id="status-texto" class="text-sm font-medium text-slate-800 mb-1">
+                    {% if print_job and print_job.status == "PRINTED" %}✓ Comprovante impresso
+                    {% elif print_job and print_job.status == "FAILED" %}⚠ Não foi possível imprimir
+                    {% elif print_job %}Imprimindo...
+                    {% else %}Venda finalizada!{% endif %}
+                </p>
+                <p id="status-erro" class="text-xs text-red-600 mb-2 {% if not print_job or print_job.status != 'FAILED' or not print_job.erro %}hidden{% endif %}">
+                    {{ print_job.erro }}
+                </p>
+                {% if print_job and print_job.status == "PRINTED" %}
+                    <p class="text-xs text-slate-400 mb-3">impresso em {{ print_job.data_impressao|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                <form id="form-imprimir" method="post"
+                      class="{% if print_job and print_job.status != 'PRINTED' and print_job.status != 'NONE' %}hidden{% endif %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="imprimir">
+                    <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700">
+                        {% if print_job and print_job.status == "PRINTED" %}Imprimir novamente{% else %}Imprimir comprovante{% endif %}
+                    </button>
+                </form>
+                <form id="form-tentar" method="post"
+                      class="{% if not print_job or print_job.status != 'FAILED' %}hidden{% endif %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="tentar_novamente">
+                    <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">Tentar novamente</button>
+                </form>
+                <a id="nao-imprimir" href="{% url 'sales:vendas' %}"
+                   class="mt-3 block text-center text-xs text-slate-400 hover:text-slate-600 {% if print_job %}hidden{% endif %}">Não imprimir</a>
+            </section>
+        {% endif %}
+
         {% if venda.status == "FINALIZADA" or venda.status == "ABERTA" %}
             <form method="post" onsubmit="return confirm('Cancelar a venda?');"
                   class="bg-white rounded-xl border border-red-100 p-6">
@@ -68,4 +105,69 @@
         {% endif %}
     </aside>
 </div>
+
+<script>
+    (function () {
+        var painel = document.getElementById("painel-impressao");
+        if (!painel) return;
+        var texto = document.getElementById("status-texto");
+        var erro = document.getElementById("status-erro");
+        var formImprimir = document.getElementById("form-imprimir");
+        var formTentar = document.getElementById("form-tentar");
+        var naoImprimir = document.getElementById("nao-imprimir");
+        var consultas = 0;
+        var consultasMaximas = 200;
+
+        function aplicar(estado, msgErro) {
+            erro.classList.add("hidden");
+            erro.textContent = "";
+            formImprimir.classList.add("hidden");
+            formTentar.classList.add("hidden");
+            if (naoImprimir) naoImprimir.classList.add("hidden");
+            if (estado === "PENDING" || estado === "RETRYING" || estado === "PROCESSING") {
+                texto.textContent = "Imprimindo...";
+            } else if (estado === "PRINTED") {
+                texto.textContent = "✓ Comprovante impresso";
+                formImprimir.classList.remove("hidden");
+                formImprimir.querySelector("button").textContent = "Imprimir novamente";
+            } else if (estado === "FAILED") {
+                texto.textContent = "⚠ Não foi possível imprimir";
+                if (msgErro) {
+                    erro.textContent = msgErro;
+                    erro.classList.remove("hidden");
+                }
+                formTentar.classList.remove("hidden");
+            } else {
+                texto.textContent = "Venda finalizada!";
+                formImprimir.classList.remove("hidden");
+                formImprimir.querySelector("button").textContent = "Imprimir comprovante";
+                if (naoImprimir) naoImprimir.classList.remove("hidden");
+            }
+        }
+
+        function consultar() {
+            fetch(painel.dataset.statusUrl, { headers: { "Accept": "application/json" } })
+                .then(function (resposta) { return resposta.json(); })
+                .then(function (dados) {
+                    consultas += 1;
+                    var estado = dados.job ? dados.job.status : "NONE";
+                    aplicar(estado, dados.job ? dados.job.erro || "" : "");
+                    if (estado === "PRINTED" || estado === "FAILED" || consultas >= consultasMaximas) {
+                        return;
+                    }
+                    setTimeout(consultar, 3000);
+                })
+                .catch(function () {
+                    consultas += 1;
+                    if (consultas < consultasMaximas) setTimeout(consultar, 3000);
+                });
+        }
+
+        var inicial = painel.dataset.estado;
+        aplicar(inicial, painel.dataset.erro || "");
+        if (inicial === "PENDING" || inicial === "RETRYING" || inicial === "PROCESSING") {
+            setTimeout(consultar, 3000);
+        }
+    })();
+</script>
 {% endblock %}

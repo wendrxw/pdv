@@ -96,6 +96,12 @@ controle de estoque transacional com lock pessimista e histórico completo,
 inventário físico com ajustes auditáveis. Ver
 [docs/products.md](products.md).
 
+### Impressão de comprovantes (print)
+
+PrintJobs com fila, retry e idempotência no servidor + Local Print Agent
+na máquina da loja (polling HTTPS, ESC/POS, `/dev/usb/lp0`, runit no Void
+Linux). Ver [docs/print.md](print.md).
+
 ## Próximas fases (fora do escopo atual)
 
 1. Módulo financeiro (entradas, saídas, recebíveis, análise).

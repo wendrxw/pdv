@@ -14,6 +14,13 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.financial.models import FormaPagamento
+from apps.printing.models import ConfiguracaoImpressao, PrintJob
+from apps.printing.services import (
+    PrintingError,
+    criar_print_job,
+    enfileirar_print_job_automatico,
+    reativar_print_job,
+)
 from apps.products.models import Produto
 
 from .forms import (
@@ -210,7 +217,14 @@ def _executar_acao_venda(request, venda, acao):
             if forma is None:
                 raise SalesError("Forma de pagamento inválida.")
         finalizar_venda(venda, usuario=usuario, forma_pagamento=forma)
+        venda.refresh_from_db()
         messages.success(request, f"Venda {venda.numero} finalizada.")
+        # Impressão automática (por configuração da loja). Nunca bloqueia a
+        # venda: falha de impressão apenas avisa.
+        try:
+            enfileirar_print_job_automatico(venda, usuario=usuario)
+        except PrintingError as exc:
+            messages.warning(request, f"Impressão: {exc}")
     elif acao == "cancelar":
         motivo = request.POST.get("motivo", "")
         cancelar_venda(venda, motivo=motivo, usuario=usuario)
@@ -297,16 +311,46 @@ def venda_detalhe(request, uuid):
         return redirect("dashboard")
     venda = get_object_or_404(Venda.objects.for_tenant(tenant), uuid=uuid)
     if request.method == "POST":
-        try:
-            cancelar_venda(
-                venda,
-                motivo=request.POST.get("motivo", ""),
-                usuario=request.user,
+        acao = request.POST.get("acao", "cancelar")
+        if acao == "imprimir":
+            try:
+                criar_print_job(venda, usuario=request.user)
+                messages.success(request, "Comprovante enviado para impressão.")
+            except PrintingError as exc:
+                messages.error(request, str(exc))
+        elif acao == "tentar_novamente":
+            job = (
+                PrintJob.objects.for_tenant(tenant)
+                .filter(venda=venda)
+                .order_by("-data_criacao")
+                .first()
             )
-            messages.success(request, f"Venda {venda.numero} cancelada.")
-        except SalesError as exc:
-            messages.error(request, str(exc))
+            try:
+                if job is None:
+                    criar_print_job(venda, usuario=request.user)
+                else:
+                    reativar_print_job(job, usuario=request.user)
+                messages.success(request, "Nova tentativa de impressão enviada.")
+            except PrintingError as exc:
+                messages.error(request, str(exc))
+        else:
+            try:
+                cancelar_venda(
+                    venda,
+                    motivo=request.POST.get("motivo", ""),
+                    usuario=request.user,
+                )
+                messages.success(request, f"Venda {venda.numero} cancelada.")
+            except SalesError as exc:
+                messages.error(request, str(exc))
         return redirect("sales:venda_detalhe", uuid=venda.uuid)
+    config = ConfiguracaoImpressao.objects.filter(tenant=tenant).first()
+    print_job = (
+        PrintJob.objects.for_tenant(tenant)
+        .filter(venda=venda)
+        .order_by("-data_criacao")
+        .first()
+    )
     return render(
         request,
         "sales/venda_detalhe.html",
@@ -314,6 +358,8 @@ def venda_detalhe(request, uuid):
             "venda": venda,
             "itens": venda.itens.select_related("produto"),
             "pagamentos": venda.pagamentos.select_related("forma_pagamento"),
+            "config_impressao": config,
+            "print_job": print_job,
         },
     )
 

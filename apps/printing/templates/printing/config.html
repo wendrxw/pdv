@@ -1,0 +1,79 @@
+{% extends "app_base.html" %}
+{% block app_title %}Impressão{% endblock %}
+{% block nav_extra %}
+    <a href="{% url 'printing:config' %}" class="hover:text-indigo-600 whitespace-nowrap">Impressão</a>
+    <a href="{% url 'printing:estacoes' %}" class="hover:text-indigo-600 whitespace-nowrap">Estações</a>
+{% endblock %}
+
+{% block app_content %}
+<div class="max-w-3xl">
+    <h1 class="text-2xl font-bold text-slate-900 mb-2">Configuração de impressão</h1>
+    <p class="text-sm text-slate-500 mb-6">
+        Cabeçalho do comprovante, largura do papel e impressão automática.
+        Campos vazios usam os dados cadastrais da loja (módulo fiscal).
+    </p>
+
+    <form method="post" class="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.largura.label }}</label>
+                {{ form.largura }}
+                {% if form.largura.errors %}<p class="mt-1 text-xs text-red-600">{{ form.largura.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.estacao_padrao.label }}</label>
+                {{ form.estacao_padrao }}
+                {% if form.estacao_padrao.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estacao_padrao.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.tentativas_maximas.label }}</label>
+                {{ form.tentativas_maximas }}
+                {% if form.tentativas_maximas.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tentativas_maximas.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="flex items-end pb-2">
+                <div class="flex items-center gap-2">
+                    {{ form.impressao_automatica }}
+                    <label class="text-sm font-medium text-slate-700">{{ form.impressao_automatica.label }}</label>
+                </div>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.nome_loja.label }}</label>
+                {{ form.nome_loja }}
+                {% if form.nome_loja.errors %}<p class="mt-1 text-xs text-red-600">{{ form.nome_loja.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.cnpj.label }}</label>
+                {{ form.cnpj }}
+                {% if form.cnpj.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cnpj.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.telefone.label }}</label>
+                {{ form.telefone }}
+                {% if form.telefone.errors %}<p class="mt-1 text-xs text-red-600">{{ form.telefone.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.endereco.label }}</label>
+                {{ form.endereco }}
+                {% if form.endereco.errors %}<p class="mt-1 text-xs text-red-600">{{ form.endereco.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.mensagem_final.label }}</label>
+                {{ form.mensagem_final }}
+                {% if form.mensagem_final.errors %}<p class="mt-1 text-xs text-red-600">{{ form.mensagem_final.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
