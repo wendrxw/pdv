@@ -366,6 +366,14 @@ def parear_estacao(codigo: str):
     estacao.save(
         update_fields=["token_hash", "status", "codigo_pareamento", "data_pareamento"]
     )
+    registrar(
+        "pareou estação de impressão",
+        entidade=estacao,
+        usuario=None,
+        tenant=estacao.tenant,
+        descricao=f"Estação '{estacao.nome}' pareada com o agente local.",
+        dados={"uuid": str(estacao.uuid)},
+    )
     return estacao, token
 
 

@@ -1,6 +1,7 @@
 """Testes da API do agente (pair/poll/resultado) e isolamento."""
 
 import json
+from unittest import mock
 
 from django.urls import reverse
 
@@ -193,3 +194,49 @@ class PollApiTest(PrintingBaseTestCase):
             **cabecalhos(self.estacao, self.token),
         )
         self.assertEqual(resposta.status_code, 400)
+
+
+class ThrottleTest(PrintingBaseTestCase):
+    """Fase 0: freio de força bruta por IP (cache)."""
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.patcher = mock.patch("apps.printing.api.MAX_FALHAS_AUTENTICACAO", 3)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+
+    def test_bloqueia_poll_apos_muitas_falhas_de_autenticacao(self):
+        url = reverse("printing_api:poll")
+        estacao = EstacaoImpressao.objects.create(tenant=self.tenant, nome="X")
+        for _ in range(3):
+            resposta = self.client.post(
+                url,
+                data=json.dumps({}),
+                content_type="application/json",
+                **cabecalhos(estacao, "token-errado"),
+            )
+            self.assertEqual(resposta.status_code, 401)
+        resposta = self.client.post(
+            url, data=json.dumps({}), content_type="application/json"
+        )
+        self.assertEqual(resposta.status_code, 429)
+
+    def test_bloqueia_pair_apos_muitos_codigos_invalidos(self):
+        url = reverse("printing_api:pair")
+        for _ in range(3):
+            resposta = self.client.post(
+                url,
+                data=json.dumps({"codigo": "ZZZZZZ"}),
+                content_type="application/json",
+            )
+            self.assertEqual(resposta.status_code, 400)
+        resposta = self.client.post(
+            url,
+            data=json.dumps({"codigo": "ZZZZZZ"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resposta.status_code, 429)
