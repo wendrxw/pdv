@@ -127,11 +127,15 @@ venda):
 2. A view enfileira o PrintJob **obrigatoriamente** — sem opção de
    desligar. Falha de impressão **nunca** bloqueia a venda (apenas aviso
    ao operador; o job fica na fila com retry).
-3. A tela `venda_detalhe` mostra o painel do comprovante:
-   - aguardando: `Imprimindo...` (polling JS a cada 3s em
-     `printing:status_venda`)
-   - sucesso: `✓ Comprovante impresso` (+ "Imprimir novamente")
-   - falha: `⚠ Não foi possível imprimir [ Tentar novamente ]`
+3. A tela `venda_detalhe` mostra o painel do comprovante (polling JS a
+   cada 3s em `printing:status_venda`):
+   - `Aguardando o agente de impressão da loja…` — **nenhuma estação
+     ativa**: falta cadastrar/parear/iniciar o agente na máquina da loja;
+   - `Aguardando impressora…` — há estação ativa; o agente pega o job em
+     segundos (ou o retry está aguardando o backoff);
+   - `Imprimindo...` — o agente reivindicou o job (PROCESSING);
+   - `✓ Comprovante impresso` (+ "Imprimir novamente");
+   - `⚠ Não foi possível imprimir [ Tentar novamente ]`.
 4. `Imprimir novamente` cria um novo job (idempotente por venda;
    após PRINTED é gerado novo uuid).
 
@@ -212,3 +216,24 @@ usa apenas stdlib).
   `uv run python -m unittest discover -s local-print-agent/tests -t local-print-agent`.
 - Nenhum teste toca `/dev/usb/lp0`; a implementação real
   (`UsbPrinterDevice`) só é usada em produção.
+
+## Troubleshooting — "o comprovante não sai"
+
+O painel do PDV mostra exatamente onde está o gargalo:
+
+| Sintoma | Causa provável | Correção |
+| --- | --- | --- |
+| `Aguardando o agente de impressão da loja…` | Nenhuma estação ATIVA (agente nunca instalado/pareado ou inativado). | Impressão → Estações → criar estação, copiar o código e parear o agente (`PRINT_AGENT_PAIR_CODE=… python -m app.main pair`); depois `python -m app.main run`. |
+| `Aguardando impressora…` (eterno) | Agente parado/morto, ou impressora desligada/desconectada. | Verificar processo/serviço (`sv status print-agent`), cabo USB e `ls -l /dev/usb/lp0`; conferir logs do agente. |
+| `Imprimindo...` (eterno) | Impressora morreu no meio da escrita. | O lease (5 min) devolve o job à fila; o agente reimprime após o backoff (uuid evita duplicidade). |
+| Nada sai, sem erro | Permissão do dispositivo. | Usuário precisa do grupo `lp`: `groups` deve listar `lp`; testar com `python -m app.main raw-test` (equivalente a `printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0`). |
+| Só sai "?"/lixo | Codificação/firmware. | Tentar `PRINTER_CODEPAGE=cp850` ou `PRINTER_ESCPOS=0` (texto puro). |
+
+Diagnóstico rápido na máquina da loja:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0   # a impressora está acessível?
+python3 -m app.main raw-test                   # o mesmo teste via agente
+python3 -m app.main test                       # página de teste (ESC/POS ou texto)
+sv status print-agent                          # serviço runit ativo? (Void Linux)
+```
