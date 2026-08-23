@@ -4,6 +4,11 @@
 # Diretório onde o agente está instalado (código + venv desnecessária).
 PRINT_AGENT_DIR=/opt/print-agent
 
+# Usuário que executa o agente (recomendado: o usuário da loja que está
+# no grupo lp e já pareou a estação — o token fica em ~/.print-agent
+# desse usuário). Vazio = roda como root.
+export PRINT_AGENT_USER=
+
 # URL pública do servidor Django (ex.: https://pdv.dominio.com).
 export PRINT_AGENT_SERVER_URL=https://pdv.example.com
 

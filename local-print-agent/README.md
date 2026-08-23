@@ -30,12 +30,19 @@ sudo mkdir -p /etc/sv/print-agent
 sudo cp deploy/print-agent/run /etc/sv/print-agent/run
 sudo chmod +x /etc/sv/print-agent/run
 sudo cp deploy/print-agent/conf /etc/sv/print-agent/conf
-# edite /etc/sv/print-agent/conf (URL do servidor, dispositivo etc.)
+# edite /etc/sv/print-agent/conf (URL do servidor, dispositivo, codepage,
+# e PRINT_AGENT_USER = usuário da loja que fez o pareamento)
 
 # 3. Ative o serviço
 sudo ln -s /etc/sv/print-agent /var/service/
 sv status print-agent
 ```
+
+> O serviço roda com o usuário definido em `PRINT_AGENT_USER` (o
+> pareamento é por usuário: o token fica em `~/.print-agent` do HOME
+> dele). Se deixar vazio, roda como root e procurará a credencial em
+> `/root/.print-agent` — por isso a mensagem "Agente não pareado"
+> aparece quando o `run` roda como root sem ter pareado antes.
 
 Logs: o serviço escreve em stdout/stderr (use um serviço de log do runit
 se desejar arquivar).
