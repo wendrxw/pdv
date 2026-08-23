@@ -3,6 +3,9 @@
 Módulo de impressão de comprovantes/notas de venda para o PDV
 (`apps/printing` + `local-print-agent/`).
 
+> Estudo de produção (arquitetura remota, análise de alternativas e
+> plano de implantação passo a passo): [docs/print-producao.md](print-producao.md).
+
 ## Arquitetura obrigatória
 
 O servidor Django fica em local remoto e **nunca** acessa a impressora.
