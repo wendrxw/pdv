@@ -58,6 +58,9 @@ class ProdutoForm(forms.ModelForm):
             "descricao",
             "observacao",
             "ncm",
+            "cest",
+            "cfop",
+            "origem",
             "imagem",
             "ativo",
         )
@@ -100,6 +103,23 @@ class ProdutoForm(forms.ModelForm):
                     "maxlength": 8,
                 }
             ),
+            "cest": forms.TextInput(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "placeholder": "Ex.: 2801000",
+                    "inputmode": "numeric",
+                    "maxlength": 7,
+                }
+            ),
+            "cfop": forms.TextInput(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "placeholder": "Ex.: 5102",
+                    "inputmode": "numeric",
+                    "maxlength": 4,
+                }
+            ),
+            "origem": forms.Select(attrs={"class": INPUT_CLASS}),
             "ativo": forms.Select(
                 choices=[(True, "Ativo"), (False, "Inativo")]
             ),
@@ -152,6 +172,18 @@ class ProdutoForm(forms.ModelForm):
         if ncm and not ncm.isdigit():
             raise forms.ValidationError("O NCM deve conter apenas dígitos.")
         return ncm
+
+    def clean_cest(self):
+        cest = (self.cleaned_data.get("cest") or "").strip()
+        if cest and not cest.isdigit():
+            raise forms.ValidationError("O CEST deve conter apenas dígitos.")
+        return cest
+
+    def clean_cfop(self):
+        cfop = (self.cleaned_data.get("cfop") or "").strip()
+        if cfop and not cfop.isdigit():
+            raise forms.ValidationError("O CFOP deve conter apenas dígitos.")
+        return cfop
 
     def clean_codigo_barras(self):
         codigo = (self.cleaned_data.get("codigo_barras") or "").strip()

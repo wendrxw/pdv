@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -245,6 +246,81 @@ class ProdutoImagemENcmTest(ProdutosViewBaseTestCase):
         produto.refresh_from_db()
         self.assertTrue(produto.imagem)
         self.assertTrue(produto.imagem.name.endswith("original.png"))
+
+
+class ProdutoCodigoFiscalTest(ProdutosViewBaseTestCase):
+    def test_codigo_gerado_automaticamente_sequencial(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Primeiro",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        primeiro = Produto.objects.get(nome="Primeiro")
+        self.assertEqual(primeiro.codigo, "000001")
+        self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Segundo",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+            },
+        )
+        segundo = Produto.objects.get(nome="Segundo")
+        self.assertEqual(segundo.codigo, "000002")
+
+    def test_campos_fiscais_salvos(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Fiscal",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+                "ncm": "21069030",
+                "cest": "2801000",
+                "cfop": "5102",
+                "origem": "1",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        produto = Produto.objects.get(nome="Fiscal")
+        self.assertEqual(produto.ncm, "21069030")
+        self.assertEqual(produto.cest, "2801000")
+        self.assertEqual(produto.cfop, "5102")
+        self.assertEqual(produto.origem, "1")
+
+    def test_cfop_invalido_rejeitado(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "CFOP ruim",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+                "cfop": "abc",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="CFOP ruim").exists())
+
+    def test_margem_lucro_calculada(self):
+        produto = Produto.objects.create(
+            tenant=self.tenant,
+            nome="Margem",
+            preco_custo=Decimal("8.00"),
+            preco_venda=Decimal("10.00"),
+        )
+        self.assertEqual(produto.margem_lucro, Decimal("20.00"))
 
 
 class BarcodeViewTest(ProdutosViewBaseTestCase):

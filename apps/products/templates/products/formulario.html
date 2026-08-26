@@ -41,7 +41,7 @@
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Código do produto</label>
-                            <input type="text" disabled value="Automático"
+                            <input type="text" disabled value="{% if produto and produto.codigo %}{{ produto.codigo }}{% else %}Automático{% endif %}"
                                    class="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400">
                         </div>
                         <div>
@@ -143,6 +143,20 @@
                                 <label class="mb-1.5 block text-sm font-medium text-slate-700">Tamanho</label>
                                 {{ form.tamanho }}
                                 {% if form.tamanho.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tamanho.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">Origem da mercadoria</label>
+                                {{ form.origem }}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">CEST</label>
+                                {{ form.cest }}
+                                {% if form.cest.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cest.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">CFOP</label>
+                                {{ form.cfop }}
+                                {% if form.cfop.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cfop.errors.0 }}</p>{% endif %}
                             </div>
                         </div>
                     </div>

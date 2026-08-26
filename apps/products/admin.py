@@ -35,6 +35,7 @@ def reativar_produtos(modeladmin, request, queryset):
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
     list_display = (
+        "codigo",
         "nome",
         "sku",
         "tenant",
@@ -46,8 +47,8 @@ class ProdutoAdmin(admin.ModelAdmin):
         "ativo",
         "data_cadastro",
     )
-    list_filter = ("tenant", "ativo", "categoria", "marca", "unidade_medida")
-    search_fields = ("nome", "sku", "codigo_barras", "ncm", "uuid")
+    list_filter = ("tenant", "ativo", "categoria", "marca", "unidade_medida", "origem")
+    search_fields = ("nome", "sku", "codigo", "codigo_barras", "ncm", "uuid")
     ordering = ("nome",)
     readonly_fields = ("uuid", "data_cadastro", "data_atualizacao")
     actions = [desativar_produtos, reativar_produtos]
