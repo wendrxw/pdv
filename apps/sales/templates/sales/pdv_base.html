@@ -12,6 +12,7 @@
             <a href="{% url 'sales:pdv' %}" class="hover:text-emerald-400">Caixa</a>
             <a href="{% url 'sales:vendas' %}" class="hover:text-emerald-400">Vendas</a>
             <a href="{% url 'printing:config' %}" class="hover:text-emerald-400">Impressão</a>
+            <a href="{% url 'labels:selecao' %}" class="hover:text-emerald-400">Etiquetas</a>
             <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="text-slate-400 hover:text-red-400">Sair</button>

@@ -3,6 +3,13 @@
 Módulo de seleção, visualização e impressão de etiquetas de produtos
 (`apps/labels` + suporte no Local Print Agent).
 
+> **Duas impressoras, dois fluxos independentes.** A impressora de NOTAS
+> (comprovante após a venda) usa `PRINTER_DEVICE` e a fila de PrintJobs
+> (ver [docs/print.md](print.md)); a impressora de ETIQUETAS (Elgin L42
+> Pro Full) usa `PRINTER_LABEL_DEVICE` e a fila de EtiquetaJobs descrita
+> aqui. Elas compartilham apenas a estação (mesmo computador, mesmo
+> token) — nada mais.
+
 ## Arquitetura (mesma dos comprovantes)
 
 A Elgin L42 Pro Full fica na LOJA, conectada por USB na mesma máquina do

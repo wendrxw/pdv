@@ -21,6 +21,11 @@
             {% else %}Aguardando…{% endif %}
         </p>
         <p id="status-erro" class="text-xs text-red-600 mb-2 {% if estado != 'FAILED' or not job.erro %}hidden{% endif %}">{{ job.erro }}</p>
+        <p id="dica-etiquetas" class="text-xs text-slate-400 mb-3 {% if estado != 'AGUARDANDO_IMPRESSORA' %}hidden{% endif %}">
+            Se a impressora de etiquetas não está imprimindo, verifique na estação da loja a
+            variável <code>PRINTER_LABEL_DEVICE</code> do agente (ex.: <code>/dev/usb/lp1</code>)
+            — as etiquetas usam uma impressora SEPARADA da impressora de notas.
+        </p>
         <p class="text-sm text-slate-500 mb-4">
             {% with resumo=job.payload.resumo %}
                 {{ resumo.produtos }} produto(s) · {{ resumo.etiquetas }} etiqueta(s) ·
@@ -49,6 +54,7 @@
     if (!painel) return;
     var texto = document.getElementById("status-texto");
     var erro = document.getElementById("status-erro");
+    var dica = document.getElementById("dica-etiquetas");
     var formTentar = document.getElementById("form-tentar");
     var consultas = 0;
     var emAndamento = ["PROCESSING", "AGUARDANDO_AGENTE", "AGUARDANDO_IMPRESSORA"];
@@ -56,10 +62,14 @@
     function aplicar(estado, msgErro) {
         erro.classList.add("hidden");
         erro.textContent = "";
+        dica.classList.add("hidden");
         formTentar.classList.add("hidden");
         if (estado === "PROCESSING") texto.textContent = "Imprimindo...";
         else if (estado === "AGUARDANDO_AGENTE") texto.textContent = "Aguardando o agente de impressão da loja…";
-        else if (estado === "AGUARDANDO_IMPRESSORA") texto.textContent = "Aguardando impressora…";
+        else if (estado === "AGUARDANDO_IMPRESSORA") {
+            texto.textContent = "Aguardando impressora…";
+            dica.classList.remove("hidden");
+        }
         else if (estado === "PRINTED") texto.textContent = "✓ Etiquetas impressas";
         else if (estado === "FAILED") {
             texto.textContent = "⚠ Não foi possível imprimir";
