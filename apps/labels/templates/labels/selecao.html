@@ -1,0 +1,239 @@
+{% extends "app_base.html" %}
+{% block app_title %}Etiquetas{% endblock %}
+{% block nav_extra %}
+<a href="{% url 'labels:selecao' %}" class="hover:text-indigo-600 whitespace-nowrap">Etiquetas</a>
+<a href="{% url 'labels:config' %}" class="hover:text-indigo-600 whitespace-nowrap">Configuração</a>
+{% endblock %}
+
+{% block app_content %}
+<div class="max-w-6xl">
+    <div class="flex items-center justify-between mb-2">
+        <h1 class="text-2xl font-bold text-slate-900">Preparar impressão de etiquetas</h1>
+        <a href="{% url 'products:lista' %}" class="text-sm text-indigo-600 hover:text-indigo-800">← Voltar aos produtos</a>
+    </div>
+    <p class="text-sm text-slate-500 mb-6">
+        {{ config.nome_impressora }} · bobina com <strong>2 etiquetas por fileira</strong>.
+        Posição ímpar fica vazia e consome a fileira mesmo assim.
+    </p>
+
+    {% if produtos %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section class="bg-white rounded-xl border border-slate-200 p-5">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Produtos selecionados</h2>
+                <div id="lista-produtos" class="space-y-2">
+                    {% for produto in produtos %}
+                        <div class="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                             data-produto data-uuid="{{ produto.uuid }}">
+                            <button type="button" class="botao-ordem text-slate-400 hover:text-indigo-600 text-xs" data-direcao="-1" title="Mover para cima">▲</button>
+                            <button type="button" class="botao-ordem text-slate-400 hover:text-indigo-600 text-xs" data-direcao="1" title="Mover para baixo">▼</button>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-800 truncate">{{ produto.nome }}</p>
+                                <p class="text-xs text-slate-400">{{ produto.codigo_barras|default:"sem código de barras" }}</p>
+                            </div>
+                            <label class="text-xs text-slate-500">Qtd.
+                                <input type="number" min="1" max="100" class="campo-qtd w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm text-right"
+                                       value="{{ produto.quantidade }}">
+                            </label>
+                            <button type="button" class="botao-remover text-red-400 hover:text-red-600 text-sm" title="Remover">✕</button>
+                        </div>
+                    {% endfor %}
+                </div>
+                <p id="lista-vazia" class="text-sm text-slate-400 py-6 text-center hidden">Nenhum produto selecionado.</p>
+            </section>
+
+            <section class="bg-white rounded-xl border border-slate-200 p-5">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Pré-visualização da bobina</h2>
+                <div id="resumo" class="grid grid-cols-2 gap-2 text-sm mb-4"></div>
+                <div id="aviso-par" class="hidden rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 mb-4"></div>
+                <div id="aviso-unico" class="hidden rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 mb-4">
+                    Atenção: esta impressão utilizará uma fileira da bobina. A segunda etiqueta da fileira ficará em branco.
+                </div>
+                <div id="preview" class="space-y-3"></div>
+            </section>
+        </div>
+
+        <form id="form-confirmar" method="post" action="{% url 'labels:imprimir' %}"
+              class="mt-6 bg-white rounded-xl border border-slate-200 p-5 flex flex-wrap items-center justify-between gap-4">
+            {% csrf_token %}
+            <div class="text-sm text-slate-600" id="resumo-confirmacao"></div>
+            <div class="flex gap-3">
+                <a href="{% url 'products:lista' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancelar</a>
+                <button type="submit" id="botao-confirmar" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700">Confirmar impressão</button>
+            </div>
+        </form>
+    {% else %}
+        <div class="bg-white rounded-xl border border-slate-200 p-10 text-center">
+            <p class="text-slate-500 mb-4">Nenhum produto selecionado.</p>
+            <a href="{% url 'products:lista' %}" class="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Buscar produtos</a>
+        </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'labels:calibrar' %}" class="mt-6">
+        {% csrf_token %}
+        <button type="submit" class="text-sm text-slate-500 hover:text-indigo-600 underline">
+            Calibrar etiquetas (impressão de teste de alinhamento)
+        </button>
+    </form>
+</div>
+
+<script>
+(function () {
+    var lista = document.getElementById("lista-produtos");
+    var previewUrl = "{% url 'labels:preview' %}";
+    var textoCodigo = {{ config.mostrar_texto_codigo|yesno:"true,false" }};
+
+    function itensAtuais() {
+        var itens = [];
+        lista.querySelectorAll("[data-produto]").forEach(function (linha) {
+            var qtd = parseInt(linha.querySelector(".campo-qtd").value, 10);
+            if (isNaN(qtd) || qtd < 1) qtd = 1;
+            if (qtd > 100) qtd = 100;
+            itens.push({ uuid: linha.dataset.uuid, quantidade: qtd });
+        });
+        return itens;
+    }
+
+    function montarEtiqueta(etiqueta) {
+        var div = document.createElement("div");
+        div.className = "rounded-lg border-2 border-slate-300 bg-white p-3 h-44 flex flex-col";
+        if (etiqueta === null) {
+            div.classList.add("border-dashed", "border-slate-200", "bg-slate-50");
+            var vazio = document.createElement("p");
+            vazio.className = "m-auto text-xs text-slate-300 font-medium";
+            vazio.textContent = "VAZIA";
+            div.appendChild(vazio);
+            return div;
+        }
+        var nome = document.createElement("p");
+        nome.className = "text-sm font-bold text-slate-800 text-center line-clamp-2";
+        nome.textContent = etiqueta.nome;
+        div.appendChild(nome);
+        var espaco = document.createElement("div");
+        espaco.className = "flex-1";
+        div.appendChild(espaco);
+        var codigo = document.createElement("div");
+        codigo.className = "flex justify-center py-2";
+        var barras = document.createElement("div");
+        barras.className = "h-12 flex items-end gap-[2px]";
+        var largura = (etiqueta.codigo_barras || "0000000000000").length;
+        for (var i = 0; i < Math.min(largura * 2, 34); i++) {
+            var barra = document.createElement("span");
+            barra.className = "inline-block bg-slate-900";
+            barra.style.width = (i % 3 === 0 ? "2px" : "1px") + "";
+            barra.style.height = (i % 4 === 0 ? "100%" : "55%") + "";
+            barras.appendChild(barra);
+        }
+        codigo.appendChild(barras);
+        div.appendChild(codigo);
+        if (textoCodigo) {
+            var texto = document.createElement("p");
+            texto.className = "text-xs text-slate-500 text-center tracking-wider";
+            texto.textContent = etiqueta.codigo_barras || "sem código";
+            div.appendChild(texto);
+        }
+        return div;
+    }
+
+    function renderizarPreview(dados) {
+        var resumo = document.getElementById("resumo");
+        var r = dados.resumo || {};
+        resumo.innerHTML =
+            "<p class='rounded-lg bg-slate-50 border border-slate-200 px-3 py-2'><span class='text-slate-500'>Produtos selecionados:</span> <strong>" + r.produtos + "</strong></p>" +
+            "<p class='rounded-lg bg-slate-50 border border-slate-200 px-3 py-2'><span class='text-slate-500'>Total de etiquetas:</span> <strong>" + r.etiquetas + "</strong></p>" +
+            "<p class='rounded-lg bg-slate-50 border border-slate-200 px-3 py-2'><span class='text-slate-500'>Fileiras utilizadas:</span> <strong>" + r.fileiras + "</strong></p>" +
+            "<p class='rounded-lg bg-slate-50 border border-slate-200 px-3 py-2'><span class='text-slate-500'>Posições vazias:</span> <strong>" + r.posicoes_vazias + "</strong></p>";
+        document.getElementById("resumo-confirmacao").textContent =
+            "Produtos: " + r.produtos + " · Etiquetas: " + r.etiquetas +
+            " · Fileiras: " + r.fileiras + " · Posições vazias: " + r.posicoes_vazias;
+
+        var avisoPar = document.getElementById("aviso-par");
+        var avisoUnico = document.getElementById("aviso-unico");
+        avisoPar.classList.add("hidden");
+        avisoUnico.classList.add("hidden");
+        if (r.etiquetas === 1 && r.produtos === 1) {
+            avisoUnico.classList.remove("hidden");
+        } else if (r.posicoes_vazias > 0) {
+            avisoPar.textContent =
+                "⚠ A última fileira possui uma posição vazia. Essa etiqueta não será impressa. " +
+                "Serão utilizadas " + r.fileiras + " fileiras da bobina.";
+            avisoPar.classList.remove("hidden");
+        }
+
+        var preview = document.getElementById("preview");
+        preview.innerHTML = "";
+        (dados.fileiras || []).forEach(function (fileira, indice) {
+            var linha = document.createElement("div");
+            linha.className = "grid grid-cols-2 gap-3";
+            linha.appendChild(montarEtiqueta(fileira[0] !== undefined ? fileira[0] : null));
+            linha.appendChild(montarEtiqueta(fileira[1] !== undefined ? fileira[1] : null));
+            var legenda = document.createElement("p");
+            legenda.className = "text-center text-[10px] text-slate-400 col-span-2";
+            legenda.textContent = "FILEIRA " + (indice + 1);
+            var bloco = document.createElement("div");
+            bloco.appendChild(linha);
+            bloco.appendChild(legenda);
+            preview.appendChild(bloco);
+        });
+    }
+
+    function atualizarPreview() {
+        fetch(previewUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
+            body: JSON.stringify({ produtos: itensAtuais() })
+        })
+            .then(function (r) { return r.json(); })
+            .then(renderizarPreview)
+            .catch(function () {});
+    }
+
+    lista.addEventListener("input", function (evento) {
+        if (evento.target.classList.contains("campo-qtd")) atualizarPreview();
+    });
+    lista.addEventListener("click", function (evento) {
+        var alvo = evento.target;
+        if (alvo.classList.contains("botao-remover")) {
+            var linha = alvo.closest("[data-produto]");
+            if (lista.querySelectorAll("[data-produto]").length === 1) {
+                lista.querySelector(".botao-remover").disabled = true;
+            }
+            linha.remove();
+            atualizarPreview();
+            if (!lista.querySelector("[data-produto]")) {
+                document.getElementById("lista-vazia").classList.remove("hidden");
+                document.getElementById("botao-confirmar").disabled = true;
+            }
+        }
+        if (alvo.classList.contains("botao-ordem")) {
+            var origem = alvo.closest("[data-produto]");
+            var vizinho = alvo.dataset.direcao === "1" ? origem.nextElementSibling : origem.previousElementSibling;
+            if (vizinho) {
+                lista.insertBefore(alvo.dataset.direcao === "1" ? vizinho : origem, alvo.dataset.direcao === "1" ? origem : vizinho);
+                atualizarPreview();
+            }
+        }
+    });
+
+    document.getElementById("form-confirmar").addEventListener("submit", function (evento) {
+        var campos = lista.querySelectorAll("[data-produto]");
+        if (!campos.length) {
+            evento.preventDefault();
+            return;
+        }
+        campos.forEach(function (linha) {
+            var uuid = document.createElement("input");
+            uuid.type = "hidden"; uuid.name = "uuid"; uuid.value = linha.dataset.uuid;
+            this.appendChild(uuid);
+            var qtd = document.createElement("input");
+            qtd.type = "hidden"; qtd.name = "quantidade"; qtd.value = linha.querySelector(".campo-qtd").value;
+            this.appendChild(qtd);
+        }, evento.target);
+    });
+
+    if (lista.querySelectorAll("[data-produto]").length === 1) {
+        lista.querySelector(".botao-remover").disabled = true;
+    }
+    atualizarPreview();
+})();
+</script>
+{% endblock %}

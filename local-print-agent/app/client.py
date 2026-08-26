@@ -85,3 +85,16 @@ class PrintAgentClient:
             f"/api/print-agent/jobs/{job_uuid}/resultado/",
             {"status": status, "erro": erro},
         )
+
+    def poll_etiquetas(self, disponivel=True):
+        """Consulta o próximo trabalho de etiquetas (Elgin L42 Pro)."""
+        return self._post(
+            "/api/print-agent/etiquetas/poll/", {"disponivel": bool(disponivel)}
+        )
+
+    def reportar_resultado_etiquetas(self, job_uuid, status, erro=""):
+        """Reporta PRINTED ou FAILED para o trabalho de etiquetas."""
+        return self._post(
+            f"/api/print-agent/etiquetas/jobs/{job_uuid}/resultado/",
+            {"status": status, "erro": erro},
+        )

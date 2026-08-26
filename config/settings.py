@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "apps.sales.apps.SalesConfig",
     "apps.fiscal.apps.FiscalConfig",
     "apps.printing.apps.PrintingConfig",
+    "apps.labels.apps.LabelsConfig",
     "apps.audit.apps.AuditConfig",
     "apps.web.apps.WebConfig",
 ]

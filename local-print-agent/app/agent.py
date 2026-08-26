@@ -18,7 +18,8 @@ from .escpos import (
     normalizar_texto,
     selecionar_codepage,
 )
-from .printer import PrinterError
+from .labels import LabelError, gerar_epl2_job
+from .printer import PrinterError, UsbPrinterDevice
 from .receipt import formatar_dados_comprovante, largura_papel
 
 MAX_PROCESSADOS = 500
@@ -91,7 +92,9 @@ def _podar_processados(config):
 class PrintAgent:
     """Pareia com o servidor, faz polling e imprime comprovantes."""
 
-    def __init__(self, config, cliente, impressora, logger=None):
+    def __init__(
+        self, config, cliente, impressora, logger=None, impressora_etiquetas=None
+    ):
         import logging
 
         self.config = config
@@ -99,9 +102,19 @@ class PrintAgent:
         self.impressora = impressora
         self.log = logger or logging.getLogger("print-agent")
         self.processados = _carregar_processados(config)
+        self.impressora_etiquetas = impressora_etiquetas or (
+            UsbPrinterDevice(config.label_device) if config.label_device else None
+        )
 
     def ciclo(self):
         """Uma rodada de polling. Retorna 'impresso', 'ocioso' ou 'ignorado'."""
+        resultado_comprovante = self._ciclo_comprovantes()
+        if self.impressora_etiquetas is not None:
+            self._ciclo_etiquetas()
+        return resultado_comprovante
+
+    def _ciclo_comprovantes(self):
+        """Comprovantes (térmica 58/80mm)."""
         disponivel = self.impressora.disponivel()
         resposta = self.cliente.poll(disponivel=disponivel)
         job = (resposta or {}).get("job")
@@ -176,6 +189,74 @@ class PrintAgent:
         self.processados[job_uuid] = "PRINTED"
         self.log.info("Comprovante %s impresso.", job_uuid)
         return "impresso"
+
+    def _ciclo_etiquetas(self):
+        """Etiquetas (Elgin L42 Pro Full, EPL2, duas por fileira).
+
+        Mesmas garantias dos comprovantes: dedupe por uuid (com prefixo
+        próprio), impressora desligada não consome o trabalho e falha é
+        reportada para o servidor agendar retry.
+        """
+        disponivel = self.impressora_etiquetas.disponivel()
+        resposta = self.cliente.poll_etiquetas(disponivel=disponivel)
+        job = (resposta or {}).get("job")
+        if not job:
+            return
+        job_uuid = str(job["uuid"])
+        chave = f"etiqueta:{job_uuid}"
+        anterior = self.processados.get(chave)
+        if anterior == "PRINTED":
+            self.log.info("EtiquetaJob %s já impresso; reconfirmando.", job_uuid)
+            self.cliente.reportar_resultado_etiquetas(job_uuid, "PRINTED")
+            return
+        if anterior == "FAILED":
+            self.log.info(
+                "EtiquetaJob %s já falhou; aguardando ação do operador.", job_uuid
+            )
+            return
+        if not disponivel:
+            return
+
+        payload = job.get("payload") or {}
+        try:
+            if self.config.label_linguagem != "epl2":
+                raise LabelError(
+                    f"Linguagem de etiquetas não suportada: "
+                    f"{self.config.label_linguagem}"
+                )
+            dados_impressao = gerar_epl2_job(payload)
+            self.impressora_etiquetas.escrever(dados_impressao)
+        except (PrinterError, OSError) as exc:
+            self._falhou_etiquetas(chave, job_uuid, f"Erro na impressão: {exc}")
+            return
+        except Exception as exc:  # noqa: BLE001 - reporta qualquer falha
+            self._falhou_etiquetas(chave, job_uuid, f"Erro inesperado: {exc}")
+            return
+
+        try:
+            self.cliente.reportar_resultado_etiquetas(job_uuid, "PRINTED")
+        except Exception as exc:  # noqa: BLE001 - reporte perdido → dedupe
+            self.log.warning(
+                "Etiquetas impressas, mas reporte falhou para %s: %s",
+                job_uuid,
+                exc,
+            )
+        _registrar_processado(self.config, chave, "PRINTED")
+        self.processados[chave] = "PRINTED"
+        self.log.info("EtiquetaJob %s impresso.", job_uuid)
+
+    def _falhou_etiquetas(self, chave, job_uuid, erro):
+        self.log.error("EtiquetaJob %s falhou: %s", job_uuid, erro)
+        try:
+            self.cliente.reportar_resultado_etiquetas(job_uuid, "FAILED", erro)
+        except Exception as exc:  # noqa: BLE001 - não perde o estado local
+            self.log.warning(
+                "Reporte de falha de etiquetas perdido para %s: %s",
+                job_uuid,
+                exc,
+            )
+        _registrar_processado(self.config, chave, "FAILED")
+        self.processados[chave] = "FAILED"
 
     def _falhou(self, job_uuid, erro):
         self.log.error("Job %s falhou: %s", job_uuid, erro)

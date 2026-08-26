@@ -1,0 +1,91 @@
+{% extends "app_base.html" %}
+{% block app_title %}Impressão de etiquetas{% endblock %}
+{% block nav_extra %}
+<a href="{% url 'labels:selecao' %}" class="hover:text-indigo-600 whitespace-nowrap">Etiquetas</a>
+<a href="{% url 'labels:config' %}" class="hover:text-indigo-600 whitespace-nowrap">Configuração</a>
+{% endblock %}
+
+{% block app_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-slate-900 mb-6">Impressão de etiquetas</h1>
+
+    <section class="bg-white rounded-xl border border-slate-200 p-6"
+             data-status-url="{% url 'labels:status_json' job.uuid %}"
+             data-estado="{{ estado }}">
+        <p id="status-texto" class="text-sm font-medium text-slate-800 mb-2">
+            {% if estado == "PRINTED" %}✓ Etiquetas impressas
+            {% elif estado == "FAILED" %}⚠ Não foi possível imprimir
+            {% elif estado == "PROCESSING" %}Imprimindo...
+            {% elif estado == "AGUARDANDO_AGENTE" %}Aguardando o agente de impressão da loja…
+            {% elif estado == "AGUARDANDO_IMPRESSORA" %}Aguardando impressora…
+            {% else %}Aguardando…{% endif %}
+        </p>
+        <p id="status-erro" class="text-xs text-red-600 mb-2 {% if estado != 'FAILED' or not job.erro %}hidden{% endif %}">{{ job.erro }}</p>
+        <p class="text-sm text-slate-500 mb-4">
+            {% with resumo=job.payload.resumo %}
+                {{ resumo.produtos }} produto(s) · {{ resumo.etiquetas }} etiqueta(s) ·
+                {{ resumo.fileiras }} fileira(s) · {{ resumo.posicoes_vazias }} posição(ões) vazia(s)
+            {% endwith %}
+            · {{ job.payload.impressora }}
+        </p>
+        {% if estado == "PRINTED" and job.data_impressao %}
+            <p class="text-xs text-slate-400 mb-4">impresso em {{ job.data_impressao|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+        <form id="form-tentar" method="post" action="{% url 'labels:tentar_novamente' job.uuid %}"
+              class="{% if estado != 'FAILED' %}hidden{% endif %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">Tentar novamente</button>
+        </form>
+        <div class="mt-4 flex gap-3">
+            <a href="{% url 'labels:selecao' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Nova impressão</a>
+            <a href="{% url 'products:lista' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Voltar aos produtos</a>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    var painel = document.querySelector("[data-status-url]");
+    if (!painel) return;
+    var texto = document.getElementById("status-texto");
+    var erro = document.getElementById("status-erro");
+    var formTentar = document.getElementById("form-tentar");
+    var consultas = 0;
+    var emAndamento = ["PROCESSING", "AGUARDANDO_AGENTE", "AGUARDANDO_IMPRESSORA"];
+
+    function aplicar(estado, msgErro) {
+        erro.classList.add("hidden");
+        erro.textContent = "";
+        formTentar.classList.add("hidden");
+        if (estado === "PROCESSING") texto.textContent = "Imprimindo...";
+        else if (estado === "AGUARDANDO_AGENTE") texto.textContent = "Aguardando o agente de impressão da loja…";
+        else if (estado === "AGUARDANDO_IMPRESSORA") texto.textContent = "Aguardando impressora…";
+        else if (estado === "PRINTED") texto.textContent = "✓ Etiquetas impressas";
+        else if (estado === "FAILED") {
+            texto.textContent = "⚠ Não foi possível imprimir";
+            if (msgErro) { erro.textContent = msgErro; erro.classList.remove("hidden"); }
+            formTentar.classList.remove("hidden");
+        }
+    }
+
+    function consultar() {
+        fetch(painel.dataset.statusUrl, { headers: { "Accept": "application/json" } })
+            .then(function (r) { return r.json(); })
+            .then(function (dados) {
+                consultas += 1;
+                var estado = dados.estado || "SEM_JOB";
+                aplicar(estado, dados.job ? dados.job.erro || "" : "");
+                if (emAndamento.indexOf(estado) === -1 || consultas >= 200) return;
+                setTimeout(consultar, 3000);
+            })
+            .catch(function () {
+                consultas += 1;
+                if (consultas < 200) setTimeout(consultar, 3000);
+            });
+    }
+
+    aplicar(painel.dataset.estado, painel.dataset.estado === "FAILED" ? "{{ job.erro }}" : "");
+    if (emAndamento.indexOf(painel.dataset.estado) !== -1) setTimeout(consultar, 3000);
+})();
+</script>
+{% endblock %}

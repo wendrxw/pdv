@@ -6,6 +6,7 @@ Comandos:
     python -m app.main test           # página de teste (ESC/POS ou texto)
     python -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
     python -m app.main codepage-test  # amostra em várias codificações (acentos)
+    python -m app.main label-test     # etiqueta de calibração (Elgin L42 Pro)
 
 Variáveis de ambiente: veja app/config.py e README.md.
 """
@@ -29,6 +30,7 @@ from .escpos import (
     normalizar_texto,
     selecionar_codepage,
 )
+from .labels import gerar_epl2_calibracao
 from .printer import UsbPrinterDevice
 
 logger = logging.getLogger("print-agent")
@@ -165,6 +167,49 @@ def comando_codepage_test(config, dispositivo=None):
     print("  UTF-8 -> utf8 | CP850 -> cp850 | CP860 -> cp860 | CP1252 -> cp1252")
 
 
+def comando_label_test(config, dispositivo=None):
+    """Imprime uma etiqueta de calibração direto na Elgin L42 Pro.
+
+    Valida moldura, posicionamento e código de barras sem depender do
+    servidor. Usa PRINTER_LABEL_DEVICE + PRINTER_LABEL_DPI (203).
+    """
+    if not config.label_device:
+        raise SystemExit(
+            "Defina PRINTER_LABEL_DEVICE (ex.: /dev/usb/lp1) para usar "
+            "o teste de etiquetas."
+        )
+    impressora = _impressora_etiquetas(config, dispositivo)
+    payload = {
+        "tipo": "calibracao",
+        "dimensoes": {
+            "largura_etiqueta": "40",
+            "altura_etiqueta": "30",
+            "gap_horizontal": "2",
+            "gap_vertical": "2",
+            "margem_esquerda": "2",
+            "margem_superior": "1",
+            "offset_horizontal": "0",
+            "offset_vertical": "0",
+            "dpi": config.label_dpi,
+        },
+    }
+    impressora.escrever(gerar_epl2_calibracao(payload))
+    print(
+        f"Etiqueta de calibração enviada para {config.label_device} "
+        f"({config.label_dpi} DPI, {config.label_linguagem.upper()})"
+    )
+
+
+def _impressora_etiquetas(config, dispositivo=None):
+    impressora = dispositivo or UsbPrinterDevice(config.label_device)
+    if not impressora.disponivel():
+        raise SystemExit(
+            f"Impressora de etiquetas indisponível em {config.label_device}. "
+            "Verifique o cabo e a permissão (grupo lp)."
+        )
+    return impressora
+
+
 def comando_raw_test(config):
     """Diagnóstico no modo mais simples possível: texto puro.
 
@@ -232,7 +277,7 @@ def main(argv=None):
         "comando",
         nargs="?",
         default="run",
-        choices=["run", "pair", "test", "raw-test", "codepage-test"],
+        choices=["run", "pair", "test", "raw-test", "codepage-test", "label-test"],
     )
     argumentos = parser.parse_args(argv)
     config = Config.from_env()
@@ -249,6 +294,9 @@ def main(argv=None):
         return 0
     if argumentos.comando == "codepage-test":
         comando_codepage_test(config)
+        return 0
+    if argumentos.comando == "label-test":
+        comando_label_test(config)
         return 0
     return comando_run(config)
 

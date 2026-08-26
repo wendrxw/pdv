@@ -33,6 +33,9 @@ class Config:
         cortar_parcial=True,
         selecionar_codepage=True,
         alimentacao_final=8,
+        label_device="",
+        label_dpi=203,
+        label_linguagem="epl2",
         poll_interval=3,
         http_timeout=30,
         state_dir=None,
@@ -52,6 +55,11 @@ class Config:
         # Linhas em branco no fim do comprovante: o corte (guilhotina ou
         # rasgo manual) precisa de folga para não cair sobre o conteúdo.
         self.alimentacao_final = alimentacao_final
+        # Impressora de ETIQUETAS (Elgin L42 Pro Full, EPL2). Vazio
+        # desativa o suporte a etiquetas nesta estação.
+        self.label_device = label_device
+        self.label_dpi = label_dpi
+        self.label_linguagem = label_linguagem
         self.poll_interval = poll_interval
         self.http_timeout = http_timeout
         self.state_dir = Path(state_dir or "~/.print-agent").expanduser()
@@ -74,6 +82,9 @@ class Config:
             selecionar_codepage=_env("PRINTER_SELECIONAR_CODEPAGE", "1").lower()
             not in {"0", "false", "no", "off"},
             alimentacao_final=_env_int("PRINTER_ALIMENTACAO_FINAL", 8),
+            label_device=_env("PRINTER_LABEL_DEVICE") or "",
+            label_dpi=_env_int("PRINTER_LABEL_DPI", 203),
+            label_linguagem=_env("PRINTER_LABEL_LINGUAGEM", "epl2"),
             poll_interval=_env_int("PRINT_AGENT_POLL_INTERVAL", 3),
             http_timeout=_env_int("PRINT_AGENT_HTTP_TIMEOUT", 30),
             state_dir=_env("PRINT_AGENT_STATE_DIR"),
