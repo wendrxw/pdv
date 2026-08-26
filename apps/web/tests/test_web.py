@@ -1,6 +1,8 @@
 from django.test import TestCase
 
+from apps.accounts.models import User
 from apps.clients.models import LeadContato
+from apps.companies.models import Tenant
 
 
 class LandingPageTest(TestCase):
@@ -63,10 +65,68 @@ class ContatoTest(TestCase):
         self.assertEqual(resposta.status_code, 200)
 
 
+class DashboardTest(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            nome="Loja Home", status=Tenant.Status.ATIVO
+        )
+        self.user = User.objects.create_user(
+            username="operador-home", password="senha-12345", tenant=self.tenant
+        )
+        self.client.force_login(self.user)
+
+    def test_requer_login(self):
+        self.client.logout()
+        resposta = self.client.get("/app/")
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_tela_de_boas_vindas(self):
+        resposta = self.client.get("/app/")
+        self.assertEqual(resposta.status_code, 200)
+        conteudo = resposta.content.decode()
+        self.assertIn("BEM-VINDO(A)!", conteudo)
+        self.assertIn("Bem-vindo ao seu PDV!", conteudo)
+        self.assertIn("Tenha um ótimo dia de trabalho!", conteudo)
+        self.assertIn("Hoje é", conteudo)
+
+    def test_sem_indicadores_ou_tabelas(self):
+        resposta = self.client.get("/app/")
+        conteudo = resposta.content.decode()
+        self.assertNotIn("Recebido hoje", conteudo)
+        self.assertNotIn("Total no período", conteudo)
+        self.assertNotIn("<table", conteudo)
+
+    def test_logo_e_marca_dagua_presentes(self):
+        resposta = self.client.get("/app/")
+        conteudo = resposta.content.decode()
+        self.assertIn("img/logo.png", conteudo)
+        self.assertIn("img/logo-simbolo.png", conteudo)
+
+    def test_nome_do_operador_autenticado(self):
+        resposta = self.client.get("/app/")
+        self.assertContains(resposta, "operador-home")
+
+    def test_plataforma_ve_painel_admin(self):
+        staff = User.objects.create_user(
+            username="staff-home", password="senha-12345"
+        )
+        staff.is_staff = True
+        staff.save()
+        self.client.force_login(staff)
+        resposta = self.client.get("/app/")
+        self.assertContains(resposta, "Abrir painel administrativo")
+
+    def test_sem_tenant_exibe_mensagem_de_vinculo(self):
+        usuario = User.objects.create_user(
+            username="sem-tenant-home", password="senha-12345"
+        )
+        self.client.force_login(usuario)
+        resposta = self.client.get("/app/")
+        self.assertContains(resposta, "não está vinculado a um ambiente")
+
+
 class LoginLogoutTest(TestCase):
     def setUp(self):
-        from apps.accounts.models import User
-
         self.user = User.objects.create_user(
             username="operador", password="senha-123"
         )

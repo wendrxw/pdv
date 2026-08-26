@@ -1,4 +1,3 @@
-from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -6,7 +5,12 @@ from apps.accounts.models import User
 from apps.companies.models import Tenant
 
 from ..models import Cliente
-from ..services import criar_cliente, desativar_cliente, reativar_cliente
+from ..services import (
+    CustomerError,
+    criar_cliente,
+    desativar_cliente,
+    reativar_cliente,
+)
 
 
 class ClientesBaseTestCase(TestCase):
@@ -35,8 +39,19 @@ class ClienteServiceTest(ClientesBaseTestCase):
     def test_cpf_cnpj_unico_por_tenant(self):
         criar_cliente(tenant=self.tenant, nome="A", cpf_cnpj="11122233344")
         criar_cliente(tenant=self.outro, nome="B", cpf_cnpj="11122233344")
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(CustomerError):
             criar_cliente(tenant=self.tenant, nome="C", cpf_cnpj="11122233344")
+
+    def test_cpf_cnpj_unico_garantido_no_banco(self):
+        from django.db import IntegrityError
+
+        Cliente.objects.create(
+            tenant=self.tenant, nome="A", cpf_cnpj="11122233344"
+        )
+        with self.assertRaises(IntegrityError):
+            Cliente.objects.create(
+                tenant=self.tenant, nome="C", cpf_cnpj="11122233344"
+            )
 
     def test_desativar_e_reativar(self):
         cliente = criar_cliente(tenant=self.tenant, nome="José")

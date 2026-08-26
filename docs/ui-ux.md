@@ -1,5 +1,22 @@
 # UI/UX — Shell e telas redesenhadas (TSK_00011)
 
+## Ajustes da TSK_00013
+
+- **Sidebar** agora usa o azul-marinho institucional exato `#001B3D`
+  (classe com valor arbitrário, independente da config do Tailwind) e o
+  azul principal `#0878F9` (token `brand`) para o item ativo.
+- Novo item **Dashboard** no topo do menu (ordem: Dashboard, Venda,
+  Produtos, Clientes, Caixa, Financeiro, Relatórios, Configurações,
+  Sair); item ativo derivado do caminho via context processor.
+- **Tela inicial** (`/app/`) redesenhada como welcome screen: saudação,
+  título, texto de apoio, divisor azul, card de data com data dinâmica
+  em pt-BR ("Hoje é 26 de agosto de 2026"), marca d'água do símbolo Ø1
+  e logo institucional ONEMANCOMPANY no canto inferior direito
+  (`frontend/static/img/logo.png` e `logo-simbolo.png`).
+- Topbar: busca com placeholder "Buscar produto, cliente, venda..."
+  (o PDV mantém "Buscar produto...") e nome real do operador
+  autenticado.
+
 ## Visão geral
 
 As telas operacionais do PDV ganharam uma identidade visual única,

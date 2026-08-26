@@ -5,7 +5,9 @@ def sidebar_ativa(request):
     """Item ativo da sidebar, derivado do caminho (nunca do frontend)."""
     caminho = request.path
     ativo = ""
-    if caminho.startswith("/app/pdv/"):
+    if caminho in ("/app/", "/app"):
+        ativo = "dashboard"
+    elif caminho.startswith("/app/pdv/"):
         ativo = "venda"
     elif caminho.startswith("/app/produtos/"):
         ativo = "produtos"

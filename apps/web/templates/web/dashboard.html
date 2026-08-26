@@ -1,47 +1,93 @@
-{% extends "base.html" %}
+{% extends "pdv_shell.html" %}
+{% load static %}
+{% block shell_title %}Dashboard{% endblock %}
 
-{% block title %}Início — PDV{% endblock %}
+{% block shell_content %}
+<style>
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .anim-fade-up { animation: fade-up 0.55s ease-out both; }
+    .anim-fade-up-logo { animation: fade-up 0.8s ease-out 0.25s both; }
+</style>
 
-{% block content %}
-<header class="border-b border-slate-200 bg-white">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <a href="/app/" class="text-xl font-bold text-indigo-600">PDV</a>
-        <div class="flex items-center gap-4">
-            <span class="text-sm text-slate-600">{{ request.user }}</span>
-            <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="text-sm font-medium text-slate-600 hover:text-indigo-600">Sair</button>
-            </form>
+<div class="relative flex h-full min-h-0 flex-col overflow-hidden">
+
+    <!-- Marca d'água institucional (símbolo Ø1) -->
+    <img src="{% static 'img/logo-simbolo.png' %}" alt="" aria-hidden="true"
+         class="pointer-events-none absolute -right-6 top-1/2 w-[52%] max-w-[680px] -translate-y-1/2 select-none opacity-[0.06] md:w-[44%]">
+
+    <!-- Mensagem de boas-vindas -->
+    <div class="anim-fade-up relative z-10 flex flex-1 flex-col justify-center px-10 pb-10 md:px-20 xl:px-40">
+        <p class="text-[18px] font-semibold uppercase tracking-[0.16em] text-slate-500">BEM-VINDO(A)! 👋</p>
+        <h1 class="mt-3 text-[42px] font-bold leading-tight text-navy-900 xl:text-[48px]">Bem-vindo ao seu PDV!</h1>
+        {% if is_plataforma %}
+            <p class="mt-4 max-w-[600px] text-lg leading-relaxed text-slate-500">
+                Você faz parte da equipe da plataforma. Utilize o painel
+                administrativo para gerenciar clientes e tenants.
+            </p>
+        {% elif tenant %}
+            <p class="mt-4 max-w-[600px] text-lg leading-relaxed text-slate-500">
+                Use o menu ao lado para acessar as funcionalidades do sistema
+                e gerenciar o seu negócio com mais eficiência.
+            </p>
+        {% else %}
+            <p class="mt-4 max-w-[600px] text-lg leading-relaxed text-slate-500">
+                Seu usuário ainda não está vinculado a um ambiente. Entre em
+                contato com o suporte.
+            </p>
+        {% endif %}
+
+        <span class="mt-7 block h-0.5 w-[70px] rounded-full bg-brand-600"></span>
+
+        <!-- Card de data -->
+        <div class="mt-8 flex w-fit items-center gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                {% include "partials/icon.html" with name="calendar" class="h-5 w-5" %}
+            </span>
+            <div>
+                <p id="data-hoje" class="text-base font-semibold text-navy-900">Hoje é ...</p>
+                <p class="text-sm text-slate-500">Tenha um ótimo dia de trabalho!</p>
+            </div>
         </div>
+
+        {% if tenant %}
+            <p class="mt-4 text-xs font-medium text-slate-400">Ambiente: {{ tenant.nome }}</p>
+        {% endif %}
+
+        {% if is_plataforma %}
+            <a href="/admin/"
+               class="mt-8 inline-flex w-fit items-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+                Abrir painel administrativo
+            </a>
+        {% endif %}
     </div>
-</header>
 
-<main class="mx-auto max-w-6xl px-4 py-12">
-    <h1 class="text-2xl font-bold text-slate-900">Olá, {{ request.user.get_full_name|default:request.user.username }}!</h1>
+    <!-- Logo institucional -->
+    <img src="{% static 'img/logo.png' %}" alt="ONEMANCOMPANY — WENDRXW"
+         class="anim-fade-up-logo pointer-events-none absolute bottom-6 right-6 w-[240px] select-none opacity-90 md:bottom-9 md:right-10 md:w-[264px]">
+</div>
+{% endblock %}
 
-    {% if is_plataforma %}
-        <p class="mt-3 text-slate-600">
-            Você faz parte da equipe da plataforma. Utilize o painel administrativo
-            para gerenciar clientes e tenants.
-        </p>
-        <a href="/admin/" class="mt-6 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 font-semibold text-white shadow-sm hover:bg-indigo-500">
-            Abrir painel administrativo
-        </a>
-    {% elif tenant %}
-        <p class="mt-3 text-slate-600">
-            Ambiente: <strong>{{ tenant.nome }}</strong> — status
-            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">{{ tenant.get_status_display }}</span>
-        </p>
-        <p class="mt-8 text-slate-500">Acesse os módulos do sistema:</p>
-        <div class="mt-4 flex flex-wrap gap-3">
-            <a href="{% url 'sales:pdv' %}" class="rounded-lg bg-emerald-600 px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-emerald-500">PDV / Caixa</a>
-            <a href="/app/produtos/" class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Produtos</a>
-            <a href="/app/estoque/" class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Estoque</a>
-            <a href="/app/financeiro/" class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Financeiro</a>
-            <a href="/app/vendas/" class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Vendas</a>
-        </div>
-    {% else %}
-        <p class="mt-3 text-slate-600">Seu usuário ainda não está vinculado a um ambiente. Entre em contato com o suporte.</p>
-    {% endif %}
-</main>
+{% block shell_scripts %}
+<script>
+(function () {
+    var alvo = document.getElementById("data-hoje");
+    if (!alvo) return;
+
+    function atualizar() {
+        var texto = new Date().toLocaleDateString("pt-BR", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        });
+        alvo.textContent = "Hoje é " + texto;
+    }
+
+    atualizar();
+    // A data se mantém correta automaticamente (vira o dia sem recarregar).
+    setInterval(atualizar, 60000);
+})();
+</script>
 {% endblock %}

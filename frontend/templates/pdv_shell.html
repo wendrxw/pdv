@@ -3,57 +3,63 @@
 {% block title %}{% block shell_title %}PDV{% endblock %} — PDV{% endblock %}
 
 {% block content %}
-<div class="flex h-screen w-full overflow-hidden bg-slate-100 font-sans text-slate-800">
+<div class="flex h-screen w-full overflow-hidden bg-[#F8FAFC] font-sans text-slate-800">
 
     <!-- Barra lateral -->
-    <aside id="sidebar" class="flex w-60 shrink-0 flex-col bg-navy-950 text-white transition-all duration-200">
+    <aside id="sidebar" class="flex w-60 shrink-0 flex-col bg-[#001B3D] text-white transition-all duration-200">
         <div class="flex items-center gap-3 px-5 pb-6 pt-6">
-            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white">
                 {% include "partials/icon.html" with name="logo" class="h-5 w-5" %}
             </span>
             <span id="sidebar-logo-texto" class="text-2xl font-extrabold tracking-tight">PDV</span>
         </div>
 
         <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+            <a href="{% url 'dashboard' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'dashboard' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="home" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Dashboard</span>
+            </a>
             <a href="{% url 'sales:pdv' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'venda' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'venda' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="cart" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Venda</span>
             </a>
             <a href="{% url 'products:lista' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'produtos' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'produtos' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="box" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Produtos</span>
             </a>
             <a href="{% url 'customers:lista' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'clientes' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'clientes' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="users" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Clientes</span>
             </a>
             <a href="{% url 'sales:caixas' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'caixa' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'caixa' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="wallet" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Caixa</span>
             </a>
-            <a href="{% url 'reports:indice' %}"
-               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'relatorios' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
-                {% include "partials/icon.html" with name="chart" class="h-5 w-5 shrink-0" %}
-                <span class="sidebar-texto">Relatórios</span>
-            </a>
             <a href="{% url 'financial:analise' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'financeiro' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'financeiro' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="coins" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Financeiro</span>
             </a>
+            <a href="{% url 'reports:indice' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'relatorios' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="chart" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Relatórios</span>
+            </a>
             <a href="{% url 'printing:config' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-               {% if sidebar_active == 'configuracoes' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+               {% if sidebar_active == 'configuracoes' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="settings" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Configurações</span>
             </a>
@@ -91,8 +97,8 @@
                     {% include "partials/icon.html" with name="search" class="h-4 w-4" %}
                 </span>
                 <input id="busca-topo" name="q" type="text" autocomplete="off"
-                       placeholder="Buscar produto..."
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-16 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100">
+                       placeholder="{% block busca_placeholder %}Buscar produto, cliente, venda...{% endblock %}"
+                       class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-16 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100">
                 <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-400">F2</span>
             </form>
 
@@ -102,8 +108,8 @@
                         {{ user.get_full_name|default:user.username|slice:":1"|upper }}
                     </span>
                     <div class="hidden leading-tight sm:block">
-                        <p class="text-sm font-semibold text-slate-800">Operador</p>
-                        <p class="text-xs text-slate-400">Caixa 01</p>
+                        <p class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</p>
+                        <p class="text-xs text-slate-400">{% block caixa_atual %}Caixa 01{% endblock %}</p>
                     </div>
                 </div>
 
