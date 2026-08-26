@@ -3,6 +3,9 @@
 Módulo de impressão de comprovantes/notas de venda para o PDV
 (`apps/printing` + `local-print-agent/`).
 
+> Estudo de produção (arquitetura remota, análise de alternativas e
+> plano de implantação passo a passo): [docs/print-producao.md](print-producao.md).
+
 ## Arquitetura obrigatória
 
 O servidor Django fica em local remoto e **nunca** acessa a impressora.
@@ -107,29 +110,37 @@ primeiro pareamento bem-sucedido.
 
 ## Modelos
 
-- `ConfiguracaoImpressao` (1:1 tenant): largura 58/80mm, impressão
-  automática, estação padrão, tentativas máximas, nome da loja, CNPJ,
-  endereço, telefone, mensagem final. Campos de cabeçalho vazios caem
-  para o `Emitente` fiscal (ou nome do tenant).
+- `ConfiguracaoImpressao` (1:1 tenant): largura 58/80mm, estação padrão,
+  tentativas máximas, nome da loja, CNPJ, endereço, telefone, mensagem
+  final. Campos de cabeçalho vazios caem para o `Emitente` fiscal (ou
+  nome do tenant).
 - `EstacaoImpressao`: `nome`, `status` (ATIVA/INATIVA), `token_hash`,
   `codigo_pareamento`, `ultima_atividade`, `data_pareamento`. Única por
   tenant+nome.
 - `PrintJob`: descrito acima. Todos registrados no Django Admin com
   `list_display`/`list_filter` (filtro por tenant).
 
-## Fluxo no PDV
+## Fluxo no PDV — impressão obrigatória
 
-1. Operador finaliza a venda (persistida).
-2. Se `impressao_automatica=true` (padrão), a view enfileira um PrintJob
-   — falha de impressão **nunca** bloqueia a venda (apenas aviso).
-3. A tela `venda_detalhe` mostra o painel do comprovante:
-   - sem job: `Venda finalizada! [ Imprimir comprovante ] [ Não imprimir ]`
-   - aguardando: `Imprimindo...` (polling JS a cada 3s em
-     `printing:status_venda`)
-   - sucesso: `✓ Comprovante impresso` (+ "Imprimir novamente")
-   - falha: `⚠ Não foi possível imprimir [ Tentar novamente ]`
-4. `Imprimir comprovante` cria job manual (idempotente por venda;
-   "Imprimir novamente" após PRINTED cria novo job).
+A impressão do comprovante acontece **SEMPRE ao final da compra**, no
+momento em que o atendente **confirma o pagamento** (finalização da
+venda):
+
+1. Operador confirma o pagamento → venda finalizada (persistida).
+2. A view enfileira o PrintJob **obrigatoriamente** — sem opção de
+   desligar. Falha de impressão **nunca** bloqueia a venda (apenas aviso
+   ao operador; o job fica na fila com retry).
+3. A tela `venda_detalhe` mostra o painel do comprovante (polling JS a
+   cada 3s em `printing:status_venda`):
+   - `Aguardando o agente de impressão da loja…` — **nenhuma estação
+     ativa**: falta cadastrar/parear/iniciar o agente na máquina da loja;
+   - `Aguardando impressora…` — há estação ativa; o agente pega o job em
+     segundos (ou o retry está aguardando o backoff);
+   - `Imprimindo...` — o agente reivindicou o job (PROCESSING);
+   - `✓ Comprovante impresso` (+ "Imprimir novamente");
+   - `⚠ Não foi possível imprimir [ Tentar novamente ]`.
+4. `Imprimir novamente` cria um novo job (idempotente por venda;
+   após PRINTED é gerado novo uuid).
 
 ## ESC/POS e largura do papel
 
@@ -138,10 +149,57 @@ primeiro pareamento bem-sucedido.
   (`1.234,56`), quantidades sem zeros à direita (`2`, `2,5`).
 - Codificação: `utf8` (padrão) ou `cp850` via `PRINTER_CODEPAGE`
   (seleciona a tabela com `ESC t 2`). Acentos e UTF-8 cobertos por teste.
-- A maioria das térmicas vendidas no Brasil (Elgin, Bematech, Epson etc.)
-  fala ESC/POS; para confirmar em campo, rode `python -m app.main test`
-  (página de teste com acentos + corte). Se a impressora não suportar,
-  `PRINTER_ESCPOS=0` envia apenas texto puro.
+
+## Impressora Tomate MDK-080 — alternativa em texto puro (printf)
+
+O driver oficial da **Tomate MDK-080** só existe para Windows, mas a
+impressora funciona no Linux via `usblp` com escrita direta no
+dispositivo. O teste que valida a impressora é:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0
+```
+
+O agente reproduz esse comportamento em Python (abertura direta do
+dispositivo — nunca um shell) no **modo texto puro**:
+
+- `PRINTER_ESCPOS=0` desativa os comandos ESC/POS: o comprovante é
+  enviado como texto puro + `\n\n\n` (exatamente o padrão do comando
+  acima), que é o caminho mais compatível com impressoras de firmware
+  restrito como a MDK-080.
+- Diagnóstico equivalente ao printf: `python -m app.main raw-test`
+  escreve `TESTE SEM SUDO\n\n\n` direto em `PRINTER_DEVICE`.
+- `python -m app.main test` imprime uma página de teste: com ESC/POS por
+  padrão, ou em texto puro com `PRINTER_ESCPOS=0`.
+
+Configuração recomendada para a MDK-080 em
+`/etc/sv/print-agent/conf`:
+
+```sh
+export PRINTER_DEVICE=/dev/usb/lp0
+export PRINTER_ESCPOS=0        # texto puro (printf), firmware MDK-080
+export PRINTER_CODEPAGE=cp850  # acentos em 1 byte (firmware não entende UTF-8)
+export PRINT_AGENT_LARGURA_PADRAO=58
+export PRINTER_ALIMENTACAO_FINAL=8   # folga p/ o rasgo não pegar o texto
+```
+
+**Acentos**: o firmware da MDK-080 interpreta os bytes como tabela de 1
+byte — UTF-8 sai como símbolos lixo. Com `PRINTER_CODEPAGE=cp850` (ou
+`cp860`/`cp1252`) o agente codifica cada acento em 1 byte e envia
+`ESC t n` no início para selecionar a tabela (desativável com
+`PRINTER_SELECIONAR_CODEPAGE=0`). Para descobrir a tabela certa em
+campo, rode `python -m app.main codepage-test`: a página imprime a mesma
+frase em UTF-8, CP850, CP860 e CP1252 rotuladas — defina a que sair
+correta. Caracteres sem representação (ex.: travessão `—`) são
+normalizados para hífen.
+
+**Folga no fim do comprovante**: por padrão o agente avança 8 linhas em
+branco após o conteúdo (ESC/POS: `ESC d 8` antes do corte; texto puro:
+`\n` × 8), para o corte/rasgo nunca cair sobre a nota. Ajuste conforme a
+distância da guilhotina/barra de rasgo com `PRINTER_ALIMENTACAO_FINAL`.
+
+As térmicas tradicionais (Elgin, Bematech, Epson etc.) continuam usando
+ESC/POS (`PRINTER_ESCPOS=1`, padrão) para realce e corte automático.
 
 ## Segurança
 
@@ -178,3 +236,31 @@ usa apenas stdlib).
   `uv run python -m unittest discover -s local-print-agent/tests -t local-print-agent`.
 - Nenhum teste toca `/dev/usb/lp0`; a implementação real
   (`UsbPrinterDevice`) só é usada em produção.
+
+## Troubleshooting — "o comprovante não sai"
+
+O painel do PDV mostra exatamente onde está o gargalo:
+
+| Sintoma | Causa provável | Correção |
+| --- | --- | --- |
+| `Aguardando o agente de impressão da loja…` | Nenhuma estação ATIVA (agente nunca instalado/pareado ou inativado). | Impressão → Estações → criar estação, copiar o código e parear o agente (`PRINT_AGENT_PAIR_CODE=… python -m app.main pair`); depois `python -m app.main run`. |
+| `Aguardando impressora…` (eterno) | Agente parado/morto, ou impressora desligada/desconectada. | Verificar processo/serviço (`sv status print-agent`), cabo USB e `ls -l /dev/usb/lp0`; conferir logs do agente. |
+| `Imprimindo...` (eterno) | Impressora morreu no meio da escrita. | O lease (5 min) devolve o job à fila; o agente reimprime após o backoff (uuid evita duplicidade). |
+| Nada sai, sem erro | Permissão do dispositivo. | Usuário precisa do grupo `lp`: `groups` deve listar `lp`; testar com `python -m app.main raw-test` (equivalente a `printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0`). |
+| Só sai "?"/lixo | Codificação/firmware. | Acentos quebrados: usar `PRINTER_CODEPAGE=cp850` (ou cp860/cp1252) e `python -m app.main codepage-test` para descobrir a tabela correta no papel. |
+
+Diagnóstico rápido na máquina da loja:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0   # a impressora está acessível?
+python3 -m app.main raw-test                   # o mesmo teste via agente
+python3 -m app.main test                       # página de teste (ESC/POS ou texto)
+python3 -m app.main codepage-test              # qual codificação de acentos usar
+sv status print-agent                          # serviço runit ativo? (Void Linux)
+```
+
+No servidor, monitoramento de estações sem atividade (para cron):
+
+```bash
+python manage.py check_print_agents --minutos 10   # exit 1 se alguma estiver parada
+```

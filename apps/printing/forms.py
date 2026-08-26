@@ -12,7 +12,6 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
         model = ConfiguracaoImpressao
         fields = [
             "largura",
-            "impressao_automatica",
             "estacao_padrao",
             "tentativas_maximas",
             "nome_loja",
@@ -44,7 +43,6 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
             ].queryset = EstacaoImpressao.objects.for_tenant(tenant)
         for campo in (
             "largura",
-            "impressao_automatica",
             "estacao_padrao",
             "tentativas_maximas",
             "nome_loja",
@@ -57,4 +55,3 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
                 "class",
                 "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm",
             )
-        self.fields["impressao_automatica"].widget.attrs.pop("class", None)

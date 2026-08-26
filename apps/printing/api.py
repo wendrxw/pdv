@@ -11,6 +11,7 @@ máquina — e nunca expõem o dispositivo /dev/usb/lp0.
 import json
 import time
 
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -28,6 +29,11 @@ from .services import (
 
 ATRASO_FALHA_AUTENTICACAO = 0.5
 
+# Throttle básico por IP (produção multi-processo: usar cache compartilhado).
+MAX_FALHAS_AUTENTICACAO = 20
+JANELA_FALHAS_SEGUNDOS = 300
+_PREFIXO_FALHAS = "print-agent-falhas"
+
 
 def _corpo(request) -> dict:
     try:
@@ -35,6 +41,32 @@ def _corpo(request) -> dict:
         return dados if isinstance(dados, dict) else {}
     except json.JSONDecodeError, UnicodeDecodeError:
         return {}
+
+
+def _ip(request) -> str:
+    return request.META.get("REMOTE_ADDR", "?")
+
+
+def _registrar_falha_autenticacao(request) -> None:
+    """Conta falhas por IP para frear força bruta (cache, janela deslizante)."""
+    chave = f"{_PREFIXO_FALHAS}:{_ip(request)}"
+    try:
+        cache.incr(chave)
+    except ValueError:
+        cache.set(chave, 1, JANELA_FALHAS_SEGUNDOS)
+
+
+_MENSAGEM_THROTTLE = "Muitas tentativas; tente mais tarde."
+
+
+def _muitas_falhas(request) -> bool:
+    return cache.get(f"{_PREFIXO_FALHAS}:{_ip(request)}", 0) >= MAX_FALHAS_AUTENTICACAO
+
+
+def _resposta_se_bloqueado(request):
+    if _muitas_falhas(request):
+        return JsonResponse({"erro": _MENSAGEM_THROTTLE}, status=429)
+    return None
 
 
 def _estacao_autenticada(request):
@@ -45,6 +77,7 @@ def _estacao_autenticada(request):
     if estacao is None:
         # Freio simples contra força bruta de token/código.
         time.sleep(ATRASO_FALHA_AUTENTICACAO)
+        _registrar_falha_autenticacao(request)
         return None
     return estacao
 
@@ -53,6 +86,9 @@ def _estacao_autenticada(request):
 @require_POST
 def pair(request):
     """Pareamento: código curto gerado na tela da loja → credencial."""
+    resposta_bloqueio = _resposta_se_bloqueado(request)
+    if resposta_bloqueio:
+        return resposta_bloqueio
     codigo = str(_corpo(request).get("codigo", "")).strip().upper()
     if not codigo:
         return JsonResponse({"erro": "Informe o código de pareamento."}, status=400)
@@ -60,6 +96,7 @@ def pair(request):
         estacao, token = parear_estacao(codigo)
     except PrintingError as exc:
         time.sleep(ATRASO_FALHA_AUTENTICACAO)
+        _registrar_falha_autenticacao(request)
         return JsonResponse({"erro": str(exc)}, status=400)
     return JsonResponse(
         {
@@ -80,6 +117,9 @@ def poll(request):
     desligada/desconectada: o trabalho permanece na fila sem ser
     reivindicado (não conta tentativa e não é perdido).
     """
+    resposta_bloqueio = _resposta_se_bloqueado(request)
+    if resposta_bloqueio:
+        return resposta_bloqueio
     estacao = _estacao_autenticada(request)
     if estacao is None:
         return JsonResponse({"erro": "Credencial da estação inválida."}, status=401)
@@ -107,6 +147,9 @@ def poll(request):
 @require_POST
 def resultado(request, uuid):
     """Reporte do agente: PRINTED (sucesso) ou FAILED (erro → retry)."""
+    resposta_bloqueio = _resposta_se_bloqueado(request)
+    if resposta_bloqueio:
+        return resposta_bloqueio
     estacao = _estacao_autenticada(request)
     if estacao is None:
         return JsonResponse({"erro": "Credencial da estação inválida."}, status=401)

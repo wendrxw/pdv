@@ -5,8 +5,25 @@
 #   sudo cp run /etc/sv/print-agent/run && sudo chmod +x /etc/sv/print-agent/run
 #   sudo ln -s /etc/sv/print-agent /var/service/
 # Configuração: edite /etc/sv/print-agent/conf (veja README.md).
+#
+# Segurança: defina PRINT_AGENT_USER no conf para o agente rodar como o
+# usuário da loja (grupo lp + credencial de pareamento no HOME dele) em
+# vez de root. Usa setpriv --init-groups para manter os grupos
+# suplementares (lp) do usuário.
 [ -r ./conf ] && . ./conf
 
 exec 2>&1
 cd "${PRINT_AGENT_DIR:-/opt/print-agent}"
+
+if [ -n "${PRINT_AGENT_USER:-}" ]; then
+    HOME_USUARIO=$(getent passwd "${PRINT_AGENT_USER}" | cut -d: -f6)
+    GID_USUARIO=$(getent passwd "${PRINT_AGENT_USER}" | cut -d: -f4)
+    exec setpriv \
+        --reuid "${PRINT_AGENT_USER}" \
+        --regid "${GID_USUARIO}" \
+        --init-groups \
+        /usr/bin/env HOME="${HOME_USUARIO}" \
+        /usr/bin/python3 -m app.main run
+fi
+
 exec /usr/bin/python3 -m app.main run

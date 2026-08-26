@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runit log service do print-agent (svlogd): arquiva e rotaciona os logs.
+# Copie para /etc/sv/print-agent/log/run e chmod +x.
+exec svlogd -tt /var/log/print-agent

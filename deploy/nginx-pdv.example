@@ -1,0 +1,47 @@
+# Nginx + gunicorn — exemplo de configuração do servidor PDV (produção).
+#
+# - A API do agente de impressão (/api/print-agent/) precisa de HTTPS
+#   OBRIGATÓRIO: o token de estação trafega nos cabeçalhos.
+# - O projeto usa Nginx + Cloudflare Tunnel (ver deploy/cloudflared.example.yml).
+# - Troque os placeholders e renomeie para /etc/nginx/sites-available/pdv.
+
+upstream pdv_app {
+    server 127.0.0.1:8001;
+}
+
+server {
+    listen 80;
+    server_name pdv.sua-loja.com;
+
+    # Produção: HTTPS termina no Cloudflare Tunnel ou com certbot aqui.
+    # Se o TLS for local (certbot), descomente os redirects abaixo.
+    # return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name pdv.sua-loja.com;
+
+    # Opção A: certificado local (certbot)
+    # ssl_certificate     /etc/letsencrypt/live/pdv.sua-loja.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/pdv.sua-loja.com/privkey.pem;
+    # Opção B: Cloudflare Tunnel termina o TLS e envia HTTP para cá —
+    # nesse caso use apenas o bloco `listen 80` acima apontando para o proxy.
+
+    client_max_body_size 5m;
+
+    location /static/ {
+        alias /opt/pdv/staticfiles/;
+        expires 7d;
+    }
+
+    location / {
+        proxy_pass http://pdv_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 60s;
+    }
+}

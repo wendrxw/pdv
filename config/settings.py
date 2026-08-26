@@ -25,7 +25,7 @@ def env_bool(key, default="False"):
 def env_int(key, default):
     try:
         return int(env(key, default))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return int(default)
 
 
@@ -126,8 +126,7 @@ else:
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
-            "django.contrib.auth.password_validation."
-            "UserAttributeSimilarityValidator"
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
         ),
     },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -167,6 +166,29 @@ _FRONTEND_STATIC = BASE_DIR / "frontend" / "static"
 STATICFILES_DIRS = [_FRONTEND_STATIC] if _FRONTEND_STATIC.exists() else []
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Cache: locmem no desenvolvimento (padrão). Em produção use "file" (sem
+# depender de Redis) ou "memcached" — o throttle da API de impressão
+# depende de um cache COMPARTILHADO entre os workers do gunicorn.
+if env("PDV_CACHE_BACKEND", "locmem") == "file":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": env("PDV_CACHE_DIR", BASE_DIR / ".django-cache"),
+        }
+    }
+elif env("PDV_CACHE_BACKEND") == "memcached":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
+            "LOCATION": env("PDV_CACHE_LOCATION", "127.0.0.1:11211"),
+        }
+    }
+
+# Arquivos enviados (certificados A1 do módulo fiscal etc.). NUNCA servir
+# este diretório publicamente no nginx — acesso apenas interno.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path(env("PDV_MEDIA_ROOT", BASE_DIR / "media"))
 
 # Módulo fiscal NFC-e (tasks/TSK_00008.md).
 # Produção exige configuração explícita; homologação é o padrão seguro.

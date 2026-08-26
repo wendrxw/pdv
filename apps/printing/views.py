@@ -2,7 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -10,7 +10,10 @@ from apps.sales.models import Venda
 
 from .forms import ConfiguracaoImpressaoForm
 from .models import ConfiguracaoImpressao, EstacaoImpressao, PrintJob
-from .services import gerar_codigo_pareamento
+from .services import (
+    classificar_status_impressao,
+    gerar_codigo_pareamento,
+)
 
 
 def _tenant_atual(request):
@@ -108,10 +111,14 @@ def estacoes(request):
 
 @login_required
 def status_venda(request, uuid):
-    """JSON com o estado do último PrintJob da venda (polling do PDV)."""
+    """JSON com o estado do último PrintJob da venda (polling do PDV).
+
+    Inclui o estado amigável (classificar_status_impressao) e a situação
+    das estações, para o operador saber se falta agente/impressora.
+    """
     tenant = request.user.get_tenant()
     if tenant is None:
-        return JsonResponse({"job": None})
+        return JsonResponse({"job": None, "estado": "SEM_JOB", "estacoes": {}})
     venda = get_object_or_404(Venda.objects.for_tenant(tenant), uuid=uuid)
     job = (
         PrintJob.objects.for_tenant(tenant)
@@ -119,19 +126,33 @@ def status_venda(request, uuid):
         .order_by("-data_criacao")
         .first()
     )
-    if job is None:
-        return JsonResponse({"job": None})
+    estacoes_ativas = EstacaoImpressao.objects.for_tenant(tenant).filter(
+        status=EstacaoImpressao.Status.ATIVA
+    )
+    ultima_atividade = estacoes_ativas.aggregate(models.Max("ultima_atividade"))[
+        "ultima_atividade__max"
+    ]
+    dados_job = None
+    if job is not None:
+        dados_job = {
+            "uuid": str(job.uuid),
+            "status": job.status,
+            "tentativa": job.tentativa,
+            "tentativas_maximas": job.tentativas_maximas,
+            "erro": job.erro,
+            "data_impressao": (
+                job.data_impressao.isoformat() if job.data_impressao else None
+            ),
+        }
     return JsonResponse(
         {
-            "job": {
-                "uuid": str(job.uuid),
-                "status": job.status,
-                "tentativa": job.tentativa,
-                "tentativas_maximas": job.tentativas_maximas,
-                "erro": job.erro,
-                "data_impressao": (
-                    job.data_impressao.isoformat() if job.data_impressao else None
+            "job": dados_job,
+            "estado": classificar_status_impressao(job, tenant),
+            "estacoes": {
+                "ativas": estacoes_ativas.count(),
+                "ultima_atividade": (
+                    ultima_atividade.isoformat() if ultima_atividade else None
                 ),
-            }
+            },
         }
     )

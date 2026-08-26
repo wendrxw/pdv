@@ -17,8 +17,8 @@ from ..models import ConfiguracaoImpressao, EstacaoImpressao, PrintJob
 from ..services import (
     PrintingError,
     autenticar_estacao,
+    classificar_status_impressao,
     criar_print_job,
-    enfileirar_print_job_automatico,
     gerar_codigo_pareamento,
     marcar_falha,
     marcar_impresso,
@@ -136,16 +136,20 @@ class PrintJobTest(PrintingBaseTestCase):
         segundo = criar_print_job(venda)
         self.assertNotEqual(primeiro.pk, segundo.pk)
 
-    def test_automatica_cria_job_apenas_se_configurada(self):
+    def test_job_obrigatorio_nao_depende_de_configuracao_previa(self):
+        # Impressão é obrigatória ao finalizar: sem config manual, a
+        # configuração padrão é criada e o job enfileirado.
         venda = self.venda_finalizada()
-        config = ConfiguracaoImpressao.carregar(self.tenant)
-        self.assertTrue(config.impressao_automatica)
-        job = enfileirar_print_job_automatico(venda)
+        self.assertEqual(
+            ConfiguracaoImpressao.objects.filter(tenant=self.tenant).count(),
+            0,
+        )
+        job = criar_print_job(venda, usuario=self.operador)
         self.assertIsNotNone(job)
-        config.impressao_automatica = False
-        config.save()
-        venda2 = self.venda_finalizada()
-        self.assertIsNone(enfileirar_print_job_automatico(venda2))
+        self.assertEqual(
+            ConfiguracaoImpressao.objects.filter(tenant=self.tenant).count(),
+            1,
+        )
 
 
 class FilaTest(PrintingBaseTestCase):
@@ -246,6 +250,65 @@ class FilaTest(PrintingBaseTestCase):
         self.assertEqual(entregue.status, PrintJob.Status.PENDING)
         self.assertEqual(entregue.tentativa, 0)
         self.assertEqual(entregue.erro, "")
+
+
+class ClassificarStatusTest(PrintingBaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.venda = self.venda_finalizada()
+
+    def test_sem_job(self):
+        self.assertEqual(classificar_status_impressao(None, self.tenant), "SEM_JOB")
+
+    def test_pendente_sem_estacao_ativa(self):
+        job = criar_print_job(self.venda)
+        self.assertEqual(
+            classificar_status_impressao(job, self.tenant),
+            "AGUARDANDO_AGENTE",
+        )
+
+    def test_pendente_com_estacao_ativa(self):
+        EstacaoImpressao.objects.create(tenant=self.tenant, nome="Caixa 01")
+        job = criar_print_job(self.venda)
+        self.assertEqual(
+            classificar_status_impressao(job, self.tenant),
+            "AGUARDANDO_IMPRESSORA",
+        )
+
+    def test_estacao_inativa_conta_como_sem_agente(self):
+        EstacaoImpressao.objects.create(
+            tenant=self.tenant, nome="Caixa 01", status=EstacaoImpressao.Status.INATIVA
+        )
+        job = criar_print_job(self.venda)
+        self.assertEqual(
+            classificar_status_impressao(job, self.tenant),
+            "AGUARDANDO_AGENTE",
+        )
+
+    def test_processando_impresso_e_falha(self):
+        estacao = EstacaoImpressao.objects.create(tenant=self.tenant, nome="Caixa 01")
+        criar_print_job(self.venda)
+        entregue = obter_proximo_job(estacao)
+        self.assertEqual(
+            classificar_status_impressao(entregue, self.tenant),
+            PrintJob.Status.PROCESSING,
+        )
+        marcar_impresso(entregue, estacao)
+        entregue.refresh_from_db()
+        self.assertEqual(
+            classificar_status_impressao(entregue, self.tenant),
+            PrintJob.Status.PRINTED,
+        )
+        criar_print_job(self.venda_finalizada())
+        entregue2 = obter_proximo_job(estacao)
+        entregue2.tentativa = entregue2.tentativas_maximas
+        entregue2.save()
+        marcar_falha(entregue2, estacao, "sem papel")
+        entregue2.refresh_from_db()
+        self.assertEqual(
+            classificar_status_impressao(entregue2, self.tenant),
+            PrintJob.Status.FAILED,
+        )
 
 
 class PareamentoTest(PrintingBaseTestCase):

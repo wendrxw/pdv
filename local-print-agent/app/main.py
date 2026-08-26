@@ -1,9 +1,11 @@
 """Ponto de entrada do Local Print Agent.
 
 Comandos:
-    python -m app.main run      # pareia (se preciso) e entra no loop
-    python -m app.main pair     # apenas pareia e salva a credencial
-    python -m app.main test     # página de teste na impressora (ESC/POS)
+    python -m app.main run            # pareia (se preciso) e entra no loop
+    python -m app.main pair           # apenas pareia e salva a credencial
+    python -m app.main test           # página de teste (ESC/POS ou texto)
+    python -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
+    python -m app.main codepage-test  # amostra em várias codificações (acentos)
 
 Variáveis de ambiente: veja app/config.py e README.md.
 """
@@ -21,7 +23,12 @@ from .agent import (
 )
 from .client import AuthError, PrintAgentClient, PrintAgentClientError
 from .config import Config
-from .escpos import EscPosPrinter
+from .escpos import (
+    CODEPAGEM_PARA_ENCODING,
+    EscPosPrinter,
+    normalizar_texto,
+    selecionar_codepage,
+)
 from .printer import UsbPrinterDevice
 
 logger = logging.getLogger("print-agent")
@@ -80,13 +87,19 @@ def comando_pair(config):
     )
 
 
-def comando_test(config):
-    impressora = UsbPrinterDevice(config.device)
+def _impressora(config, dispositivo=None):
+    """Dispositivo USB (ou fake injetado nos testes)."""
+    impressora = dispositivo or UsbPrinterDevice(config.device)
     if not impressora.disponivel():
         raise SystemExit(
             f"Impressora indisponível em {config.device}. "
             "Verifique o cabo e a permissão (grupo lp)."
         )
+    return impressora
+
+
+def montar_pagina_teste(config):
+    """Bytes da página de teste (acentos + corte) no modo configurado."""
     linhas = [
         ("=" * 32, "normal"),
         ("PDV — PÁGINA DE TESTE", "central_negrito"),
@@ -98,13 +111,78 @@ def comando_test(config):
     impressora_escpos = EscPosPrinter(
         codepage=config.codepage, cortar_parcial=config.cortar_parcial
     )
-    dados = (
-        impressora_escpos.render(linhas)
-        if config.escpos
-        else ("\n".join(t for t, _ in linhas) + "\n\n\n\n").encode("utf-8")
-    )
-    impressora.escrever(dados)
+    if config.escpos:
+        return impressora_escpos.render(
+            linhas, alimentar_antes_de_cortar=config.alimentacao_final
+        )
+    encoding = CODEPAGEM_PARA_ENCODING.get(config.codepage, "utf-8")
+    dados = "\n".join(t for t, _ in linhas) + "\n" * config.alimentacao_final
+    dados = normalizar_texto(dados).encode(encoding, errors="replace")
+    if config.selecionar_codepage:
+        dados = selecionar_codepage(config.codepage) + dados
+    return dados
+
+
+def comando_test(config, dispositivo=None):
+    impressora = _impressora(config, dispositivo)
+    impressora.escrever(montar_pagina_teste(config))
     print("Página de teste enviada para", config.device)
+
+
+def montar_pagina_codepage(config):
+    """Página física com a mesma amostra em várias codificações.
+
+    Cada linha é precedida do comando de seleção da tabela (ESC t n). O
+    operador olha o papel e informa qual linha saiu correta para definir
+    PRINTER_CODEPAGE.
+    """
+    amostra = "ÁÉÍÓÚÇ ÃÕ áéíóúç ãõ — Café 500ml"
+    candidatas = [
+        ("UTF-8 (padrao)", "utf8"),
+        ("CP850", "cp850"),
+        ("CP860 (portugues)", "cp860"),
+        ("CP1252 (Windows)", "cp1252"),
+    ]
+    blocos = bytearray()
+    blocos += b"TESTE DE CODIFICACAO\n"
+    blocos += b"============================\n"
+    for rotulo, codepage in candidatas:
+        blocos += f"{rotulo}:\n".encode("ascii")
+        encoding = CODEPAGEM_PARA_ENCODING.get(codepage, "utf-8")
+        blocos += selecionar_codepage(codepage)
+        blocos += normalizar_texto(amostra).encode(encoding, errors="replace")
+        blocos += b"\n\n"
+    blocos += b"============================\n"
+    blocos += b"\n" * config.alimentacao_final
+    return bytes(blocos)
+
+
+def comando_codepage_test(config, dispositivo=None):
+    impressora = _impressora(config, dispositivo)
+    impressora.escrever(montar_pagina_codepage(config))
+    print("Página de teste de codificação enviada para", config.device)
+    print("Veja no papel qual linha saiu correta e defina PRINTER_CODEPAGE:")
+    print("  UTF-8 -> utf8 | CP850 -> cp850 | CP860 -> cp860 | CP1252 -> cp1252")
+
+
+def comando_raw_test(config):
+    """Diagnóstico no modo mais simples possível: texto puro.
+
+    Equivalente ao comando que valida a impressora em Linux:
+
+        printf "TESTE SEM SUDO\\n\\n\\n" > /dev/usb/lp0
+
+    Sem nenhum comando ESC/POS — serve para impressoras com firmware
+    caprichoso (ex.: Tomate MDK-080, driver oficial só para Windows).
+    """
+    impressora = UsbPrinterDevice(config.device)
+    if not impressora.disponivel():
+        raise SystemExit(
+            f"Impressora indisponível em {config.device}. "
+            "Verifique o cabo e a permissão (grupo lp)."
+        )
+    impressora.escrever(b"TESTE SEM SUDO\n\n\n")
+    print(f"'TESTE SEM SUDO' enviado direto para {config.device}")
 
 
 def comando_run(config):
@@ -151,7 +229,10 @@ def comando_run(config):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="print-agent")
     parser.add_argument(
-        "comando", nargs="?", default="run", choices=["run", "pair", "test"]
+        "comando",
+        nargs="?",
+        default="run",
+        choices=["run", "pair", "test", "raw-test", "codepage-test"],
     )
     argumentos = parser.parse_args(argv)
     config = Config.from_env()
@@ -162,6 +243,12 @@ def main(argv=None):
         return 0
     if argumentos.comando == "test":
         comando_test(config)
+        return 0
+    if argumentos.comando == "raw-test":
+        comando_raw_test(config)
+        return 0
+    if argumentos.comando == "codepage-test":
+        comando_codepage_test(config)
         return 0
     return comando_run(config)
 

@@ -31,6 +31,8 @@ class Config:
         codepage="utf8",
         escpos=True,
         cortar_parcial=True,
+        selecionar_codepage=True,
+        alimentacao_final=8,
         poll_interval=3,
         http_timeout=30,
         state_dir=None,
@@ -44,6 +46,12 @@ class Config:
         self.codepage = codepage
         self.escpos = escpos
         self.cortar_parcial = cortar_parcial
+        # Envia ESC t n no início (mesmo em modo texto) para o firmware
+        # interpretar os acentos na tabela escolhida.
+        self.selecionar_codepage = selecionar_codepage
+        # Linhas em branco no fim do comprovante: o corte (guilhotina ou
+        # rasgo manual) precisa de folga para não cair sobre o conteúdo.
+        self.alimentacao_final = alimentacao_final
         self.poll_interval = poll_interval
         self.http_timeout = http_timeout
         self.state_dir = Path(state_dir or "~/.print-agent").expanduser()
@@ -63,6 +71,9 @@ class Config:
             not in {"0", "false", "no", "off"},
             cortar_parcial=_env("PRINTER_CORTE_PARCIAL", "1").lower()
             not in {"0", "false", "no", "off"},
+            selecionar_codepage=_env("PRINTER_SELECIONAR_CODEPAGE", "1").lower()
+            not in {"0", "false", "no", "off"},
+            alimentacao_final=_env_int("PRINTER_ALIMENTACAO_FINAL", 8),
             poll_interval=_env_int("PRINT_AGENT_POLL_INTERVAL", 3),
             http_timeout=_env_int("PRINT_AGENT_HTTP_TIMEOUT", 30),
             state_dir=_env("PRINT_AGENT_STATE_DIR"),

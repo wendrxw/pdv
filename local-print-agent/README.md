@@ -30,12 +30,19 @@ sudo mkdir -p /etc/sv/print-agent
 sudo cp deploy/print-agent/run /etc/sv/print-agent/run
 sudo chmod +x /etc/sv/print-agent/run
 sudo cp deploy/print-agent/conf /etc/sv/print-agent/conf
-# edite /etc/sv/print-agent/conf (URL do servidor, dispositivo etc.)
+# edite /etc/sv/print-agent/conf (URL do servidor, dispositivo, codepage,
+# e PRINT_AGENT_USER = usuário da loja que fez o pareamento)
 
 # 3. Ative o serviço
 sudo ln -s /etc/sv/print-agent /var/service/
 sv status print-agent
 ```
+
+> O serviço roda com o usuário definido em `PRINT_AGENT_USER` (o
+> pareamento é por usuário: o token fica em `~/.print-agent` do HOME
+> dele). Se deixar vazio, roda como root e procurará a credencial em
+> `/root/.print-agent` — por isso a mensagem "Agente não pareado"
+> aparece quando o `run` roda como root sem ter pareado antes.
 
 Logs: o serviço escreve em stdout/stderr (use um serviço de log do runit
 se desejar arquivar).
@@ -63,10 +70,49 @@ execução; após o pareamento, deixe a variável vazia.
 ## Uso
 
 ```bash
-python3 -m app.main run     # loop: autentica, poll, imprime, reporta
-python3 -m app.main pair    # apenas pareamento
-python3 -m app.main test    # página de teste na impressora (ESC/POS)
+python3 -m app.main run            # loop: autentica, poll, imprime, reporta
+python3 -m app.main pair           # apenas pareamento
+python3 -m app.main test           # página de teste na impressora (ESC/POS ou texto)
+python3 -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
+python3 -m app.main codepage-test  # amostra de acentos em várias codificações
 ```
+
+## Modo texto puro (printf) — alternativa para a Tomate MDK-080
+
+A impressora térmica **Tomate MDK-080** tem driver oficial apenas para
+Windows, mas funciona no Linux via `usblp`, escrevendo direto no
+dispositivo:
+
+```bash
+printf "TESTE SEM SUDO\n\n\n" > /dev/usb/lp0
+```
+
+O agente reproduz esse comportamento **sem executar shell**: abre o
+dispositivo em modo binário e escreve os bytes. Para impressoras de
+firmware restrito como a MDK-080, use o modo texto puro:
+
+```sh
+export PRINTER_ESCPOS=0   # sem comandos ESC/POS; texto + \n\n\n (printf)
+python3 -m app.main raw-test   # equivalente ao printf acima
+```
+
+Com `PRINTER_ESCPOS=0` o comprovante sai em texto puro (sem realce/corte
+automático); com `PRINTER_ESCPOS=1` (padrão) o agente usa ESC/POS
+(Elgin, Bematech, Epson etc.).
+
+### Acentos quebrados?
+
+Se os acentos saem como símbolos estranhos, o firmware da impressora não
+entende UTF-8. Use uma codepage de 1 byte:
+
+```sh
+export PRINTER_CODEPAGE=cp850   # ou cp860 (português) / cp1252 (Windows)
+python3 -m app.main codepage-test
+```
+
+A página `codepage-test` imprime a mesma frase em UTF-8, CP850, CP860 e
+CP1252 (cada linha precedida da seleção da tabela). Veja no papel qual
+linha saiu correta e defina `PRINTER_CODEPAGE` com essa opção.
 
 ## Variáveis de ambiente
 
@@ -76,9 +122,11 @@ python3 -m app.main test    # página de teste na impressora (ESC/POS)
 | `PRINTER_DEVICE` | `/dev/usb/lp0` | Dispositivo da térmica (usblp). |
 | `PRINT_AGENT_PAIR_CODE` | — | Código de pareamento (uso único). |
 | `PRINT_AGENT_LARGURA_PADRAO` | `58` | Largura usada quando o payload não informa. |
-| `PRINTER_CODEPAGE` | `utf8` | `utf8` ou `cp850` (acentos via `ESC t 2`). |
-| `PRINTER_ESCPOS` | `1` | `0` desativa comandos ESC/POS (texto puro). |
+| `PRINTER_CODEPAGE` | `utf8` | Codificação dos acentos: `utf8`, `cp850`, `cp860` (português), `cp1252` (Windows) ou `latin1`. Impressoras de firmware antigo (MDK-080) precisam de `cp850`/`cp860`/`cp1252`. |
+| `PRINTER_SELECIONAR_CODEPAGE` | `1` | Envia `ESC t n` no início (mesmo em modo texto) para o firmware interpretar a tabela escolhida; `0` desativa. |
+| `PRINTER_ESCPOS` | `1` | `0` desativa ESC/POS (texto puro estilo printf; indicado p/ Tomate MDK-080). |
 | `PRINTER_CORTE_PARCIAL` | `1` | `0` para corte total (`GS V 0`). |
+| `PRINTER_ALIMENTACAO_FINAL` | `8` | Linhas em branco no fim do comprovante (folga para o corte/rasgo não pegar o conteúdo). |
 | `PRINT_AGENT_POLL_INTERVAL` | `3` | Segundos entre polls. |
 | `PRINT_AGENT_HTTP_TIMEOUT` | `30` | Timeout HTTP em segundos. |
 | `PRINT_AGENT_STATE_DIR` | `~/.print-agent` | Estado local (credencial + dedupe). |
