@@ -19,6 +19,12 @@ export PRINT_AGENT_PAIR_CODE=
 # Dispositivo da impressora térmica USB (usblp). Padrão: /dev/usb/lp0.
 export PRINTER_DEVICE=/dev/usb/lp0
 
+# Impressora de ETIQUETAS (Elgin L42 Pro Full, EPL2). Vazio = sem
+# etiquetas nesta estação. Ex.: /dev/usb/lp1.
+export PRINTER_LABEL_DEVICE=
+export PRINTER_LABEL_DPI=203
+export PRINTER_LABEL_LINGUAGEM=epl2
+
 # Codificação dos acentos: utf8 (padrão) ou cp850/cp860/cp1252/latin1.
 # Firmware antigo (ex.: Tomate MDK-080) NÃO entende UTF-8: use cp850
 # (ou rode 'python3 -m app.main codepage-test' para ver qual funciona).
