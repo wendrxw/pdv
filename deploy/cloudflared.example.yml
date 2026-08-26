@@ -1,13 +1,15 @@
-# Cloudflare Tunnel — expõe o servidor PDV com HTTPS sem abrir portas.
-# Renomeie para config.yml e rode: cloudflared tunnel run pdv
+# Cloudflare Tunnel — exposição do PDV com HTTPS sem abrir portas.
 #
-# O Token (eyJh...) é criado no dashboard da Cloudflare; o túnel termina
-# o TLS e encaminha para o Nginx local em HTTP na porta 80.
+# IMPORTANTE: se o servidor JÁ TEM um túnel em uso por outros serviços,
+# adicione apenas o hostname abaixo no ingress EXISTENTE — não crie um
+# túnel novo. O script deploy/setup-pdv.sh não recria túneis existentes.
+#
+# Renomeie para /etc/cloudflared/config.yml e ajuste <TUNNEL_ID>.
 
 tunnel: <TUNNEL_ID>
 credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
 
 ingress:
-  - hostname: pdv.sua-loja.com
+  - hostname: pdv.wendrxw.online
     service: http://127.0.0.1:80
   - service: http_status:404

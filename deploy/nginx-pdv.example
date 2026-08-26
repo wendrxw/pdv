@@ -1,9 +1,12 @@
-# Nginx + gunicorn — exemplo de configuração do servidor PDV (produção).
+# Nginx — site do PDV em produção (pdv.wendrxw.online)
 #
-# - A API do agente de impressão (/api/print-agent/) precisa de HTTPS
-#   OBRIGATÓRIO: o token de estação trafega nos cabeçalhos.
-# - O projeto usa Nginx + Cloudflare Tunnel (ver deploy/cloudflared.example.yml).
-# - Troque os placeholders e renomeie para /etc/nginx/sites-available/pdv.
+# Topologia: Cloudflare Tunnel (TLS) → Nginx :80 → gunicorn 127.0.0.1:8001.
+# Como o TLS termina NO TÚNEL, o Nginx escuta apenas em 80 e encaminha
+# X-Forwarded-Proto: https para o Django reconhecer requisições seguras
+# (PDV_BEHIND_PROXY=True no .env).
+#
+# O script deploy/setup-pdv.sh instala este arquivo em
+# /etc/nginx/sites-available/pdv com o domínio correto.
 
 upstream pdv_app {
     server 127.0.0.1:8001;
@@ -11,28 +14,21 @@ upstream pdv_app {
 
 server {
     listen 80;
-    server_name pdv.sua-loja.com;
-
-    # Produção: HTTPS termina no Cloudflare Tunnel ou com certbot aqui.
-    # Se o TLS for local (certbot), descomente os redirects abaixo.
-    # return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name pdv.sua-loja.com;
-
-    # Opção A: certificado local (certbot)
-    # ssl_certificate     /etc/letsencrypt/live/pdv.sua-loja.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/pdv.sua-loja.com/privkey.pem;
-    # Opção B: Cloudflare Tunnel termina o TLS e envia HTTP para cá —
-    # nesse caso use apenas o bloco `listen 80` acima apontando para o proxy.
+    listen [::]:80;
+    server_name pdv.wendrxw.online;
 
     client_max_body_size 5m;
 
+    # Cabeçalhos básicos de segurança (HSTS é enviado pelo próprio Django)
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+
+    # Arquivos estáticos (collectstatic). /media/ NÃO é servido —
+    # certificados A1 do fiscal nunca ficam públicos.
     location /static/ {
         alias /opt/pdv/staticfiles/;
         expires 7d;
+        add_header Cache-Control "public";
     }
 
     location / {
@@ -40,8 +36,14 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        # TLS termina no Cloudflare Tunnel: SEMPRE https daqui para frente.
+        proxy_set_header X-Forwarded-Proto https;
         proxy_connect_timeout 30s;
         proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
     }
+
+    # Gzip básico
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
 }

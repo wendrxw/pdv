@@ -9,6 +9,13 @@
 > root ou sudo, um domínio apontado para o servidor (ex.:
 > `pdv.sua-empresa.com`) e Python 3.14 (ou `uv`, que instala a versão).
 
+> **Atalho (Debian/Ubuntu):** o script `deploy/setup-pdv.sh` executa os
+> passos 2–9 deste guia de forma idempotente (com auditoria de serviços
+> e portas, backup de `/etc/nginx`, `/etc/cloudflared` e systemd antes
+> de qualquer mudança, e validação de `nginx -t`). Uso:
+> `sudo sh deploy/setup-pdv.sh --repo=https://github.com/<conta>/pdv.git`.
+> Os modelos de serviço/configuração estão em `deploy/`.
+
 ## Índice
 
 1. [Visão geral da topologia](#1-visão-geral-da-topologia)

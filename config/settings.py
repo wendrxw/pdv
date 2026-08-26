@@ -204,12 +204,27 @@ SEFAZ_CERTIFICATE_PASSWORD = os.environ.get("SEFAZ_CERTIFICATE_PASSWORD", "")
 
 # Segurança (produção deve definir DJANGO_DEBUG=False e as opções abaixo via env)
 SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_HTTPONLY = True
+# False de propósito: o JS do agente de impressão lê o token CSRF do
+# cookie para enviar em X-CSRFToken. Não alterar sem revisar a API.
 CSRF_COOKIE_HTTPONLY = False
+
+# Atrás do Cloudflare Tunnel + Nginx o TLS termina no proxy e o Django
+# recebe HTTP. Só confiar no X-Forwarded-Proto quando explicitamente
+# configurado (gunicorn fica em 127.0.0.1, sem exposição direta).
+if env_bool("PDV_BEHIND_PROXY", "False"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", "True")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = env_int("DJANGO_HSTS_SECONDS", 0)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
+        "DJANGO_HSTS_INCLUDE_SUBDOMAINS", "False"
+    )
+    SECURE_HSTS_PRELOAD = env_bool("DJANGO_HSTS_PRELOAD", "False")
     SECURE_HSTS_SECONDS = env_int("DJANGO_HSTS_SECONDS", 0)
