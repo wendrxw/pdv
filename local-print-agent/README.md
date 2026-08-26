@@ -75,6 +75,7 @@ python3 -m app.main pair           # apenas pareamento
 python3 -m app.main test           # página de teste na impressora (ESC/POS ou texto)
 python3 -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
 python3 -m app.main codepage-test  # amostra de acentos em várias codificações
+python3 -m app.main label-test     # etiqueta de calibração (Elgin L42 Pro)
 ```
 
 ## Modo texto puro (printf) — alternativa para a Tomate MDK-080
@@ -131,6 +132,9 @@ linha saiu correta e defina `PRINTER_CODEPAGE` com essa opção.
 | `PRINT_AGENT_HTTP_TIMEOUT` | `30` | Timeout HTTP em segundos. |
 | `PRINT_AGENT_STATE_DIR` | `~/.print-agent` | Estado local (credencial + dedupe). |
 | `PRINT_AGENT_LOG_LEVEL` | `INFO` | Nível de log. |
+| `PRINTER_LABEL_DEVICE` | — | Impressora de ETIQUETAS (Elgin L42 Pro Full, EPL2); vazio desativa etiquetas na estação. Ex.: `/dev/usb/lp1`. |
+| `PRINTER_LABEL_DPI` | `203` | Resolução da impressora de etiquetas (dots por polegada). |
+| `PRINTER_LABEL_LINGUAGEM` | `epl2` | Linguagem da impressora de etiquetas (EPL2). |
 
 ## Comportamento
 

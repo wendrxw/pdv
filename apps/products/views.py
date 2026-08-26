@@ -110,9 +110,7 @@ def editar(request, uuid):
         form = ProdutoForm(request.POST, instance=produto, tenant=tenant)
         if form.is_valid():
             try:
-                alterar_produto(
-                    produto, usuario=request.user, **form.cleaned_data
-                )
+                alterar_produto(produto, usuario=request.user, **form.cleaned_data)
                 messages.success(request, f"Produto {produto.nome} atualizado.")
                 return redirect("products:detalhe", uuid=produto.uuid)
             except ProductServiceError as exc:
@@ -141,6 +139,33 @@ def alternar_status(request, uuid):
             reativar_produto(produto, usuario=request.user)
             messages.success(request, f"Produto {produto.nome} reativado.")
     return redirect("products:detalhe", uuid=produto.uuid)
+
+
+@login_required
+def busca(request):
+    """Busca JSON para a listagem (atualiza a tabela sem recarregar).
+
+    Retorna nome, SKU, código de barras e categoria para montar a linha
+    da tabela. Isolado por tenant.
+    """
+    tenant = _tenant_atual(request)
+    if tenant is None:
+        return JsonResponse({"resultados": []})
+    termo = request.GET.get("q", "").strip()
+    produtos = buscar_produtos(tenant, termo=termo)[:50]
+    resultados = [
+        {
+            "uuid": str(produto.uuid),
+            "nome": produto.nome,
+            "sku": produto.sku,
+            "codigo_barras": produto.codigo_barras,
+            "categoria": produto.categoria.nome if produto.categoria else "",
+            "preco_venda": str(produto.preco_venda),
+            "ativo": produto.ativo,
+        }
+        for produto in produtos
+    ]
+    return JsonResponse({"resultados": resultados})
 
 
 @login_required
