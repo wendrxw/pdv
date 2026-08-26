@@ -1,0 +1,6 @@
+{# Mantém os filtros ativos ao trocar o período no cabeçalho. #}
+{% if forma_uuid %}<input type="hidden" name="forma_pagamento" value="{{ forma_uuid }}">{% endif %}
+{% if categoria_pk %}<input type="hidden" name="categoria" value="{{ categoria_pk }}">{% endif %}
+{% if operador_pk %}<input type="hidden" name="operador" value="{{ operador_pk }}">{% endif %}
+{% if caixa_uuid %}<input type="hidden" name="caixa" value="{{ caixa_uuid }}">{% endif %}
+{% if status != 'FINALIZADA' %}<input type="hidden" name="status" value="{{ status }}">{% endif %}

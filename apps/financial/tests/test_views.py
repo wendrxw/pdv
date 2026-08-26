@@ -58,8 +58,9 @@ class AnaliseViewTest(FinancialViewBaseTestCase):
 
     def test_cards_presentes(self):
         resposta = self.client.get(self.url)
-        self.assertContains(resposta, "Entradas")
-        self.assertContains(resposta, "Resultado")
+        self.assertContains(resposta, "Controle Financeiro")
+        self.assertContains(resposta, "Recebido hoje")
+        self.assertContains(resposta, "Total no período")
 
 
 class EntradaFlowTest(FinancialViewBaseTestCase):

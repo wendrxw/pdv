@@ -1,114 +1,449 @@
-{% extends "app_base.html" %}
-{% block app_title %}Financeiro{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Financeiro{% endblock %}
 
-{% block app_content %}
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-900">Análise financeira</h1>
-        <p class="text-sm text-slate-500">Período de {{ inicio|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }} · modo {{ modo }}</p>
-    </div>
-    <div class="flex gap-2">
-        <a href="{% url 'financial:entrada_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova entrada</a>
-        <a href="{% url 'financial:saida_nova' %}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Nova saída</a>
-    </div>
-</div>
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 
-<form method="get" class="mb-6 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-slate-200 p-4">
-    <div>
-        <label class="block text-xs font-medium text-slate-500 mb-1">Início</label>
-        <input type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    <!-- Cabeçalho -->
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Controle Financeiro</h1>
+            <p class="mt-0.5 text-sm text-slate-500">Acompanhe o desempenho financeiro do seu negócio.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <form method="get" id="form-periodo" class="flex items-center gap-2">
+                {% include "financial/_filtros_ocultos.html" %}
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                        {% include "partials/icon.html" with name="calendar" class="h-4 w-4" %}
+                    </span>
+                    <select name="periodo" onchange="document.getElementById('form-periodo').submit()"
+                            class="appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-16 text-sm font-semibold text-slate-700 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                        {% for valor, rotulo in presets_periodo.items %}
+                            <option value="{{ valor }}" {% if periodo == valor %}selected{% endif %}>{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                        {% include "partials/icon.html" with name="chevron-down" class="h-4 w-4" %}
+                    </span>
+                </div>
+                <span class="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-600 lg:block">
+                    {{ inicio|date:"d/m/Y" }} - {{ fim|date:"d/m/Y" }}
+                </span>
+            </form>
+            <button type="button" id="btn-filtros"
+                    class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+                {% include "partials/icon.html" with name="filter" class="h-4 w-4" %}
+                Filtros
+            </button>
+        </div>
     </div>
-    <div>
-        <label class="block text-xs font-medium text-slate-500 mb-1">Fim</label>
-        <input type="date" name="fim" value="{{ fim|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-    </div>
-    <div>
-        <label class="block text-xs font-medium text-slate-500 mb-1">Modo</label>
-        <select name="modo" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            <option value="CAIXA" {% if modo == 'CAIXA' %}selected{% endif %}>Caixa</option>
-            <option value="COMPETENCIA" {% if modo == 'COMPETENCIA' %}selected{% endif %}>Competência</option>
-        </select>
-    </div>
-    <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Aplicar</button>
-</form>
 
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Entradas</p>
-        <p class="mt-1 text-xl font-bold text-emerald-600">R$ {{ entradas }}</p>
+    <!-- Painel de filtros -->
+    <div id="painel-filtros" class="mb-6 hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form method="get" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Período</label>
+                <select name="periodo" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    {% for valor, rotulo in presets_periodo.items %}
+                        <option value="{{ valor }}" {% if periodo == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Forma de pagamento</label>
+                <select name="forma_pagamento" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Todas</option>
+                    {% for forma in formas %}
+                        <option value="{{ forma.uuid }}" {% if forma_uuid == forma.uuid|stringformat:'s' %}selected{% endif %}>{{ forma.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Categoria</label>
+                <select name="categoria" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.pk }}" {% if categoria_pk == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Operador</label>
+                <select name="operador" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                    {% for operador in operadores %}
+                        <option value="{{ operador.pk }}" {% if operador_pk == operador.pk|stringformat:'s' %}selected{% endif %}>{{ operador.get_full_name|default:operador.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Caixa</label>
+                <select name="caixa" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                    {% for caixa in caixas %}
+                        <option value="{{ caixa.uuid }}" {% if caixa_uuid == caixa.uuid|stringformat:'s' %}selected{% endif %}>Caixa de {{ caixa.operador.get_full_name|default:caixa.operador.username }} — {{ caixa.data_abertura|date:"d/m/Y" }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Status da transação</label>
+                <select name="status" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    {% for valor, rotulo in statuses_controle %}
+                        <option value="{{ valor }}" {% if status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Início</label>
+                    <input type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}"
+                           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Fim</label>
+                    <input type="date" name="fim" value="{{ fim|date:'Y-m-d' }}"
+                           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="flex items-end justify-end gap-2 sm:col-span-2 lg:col-span-4">
+                <a href="{% url 'financial:analise' %}"
+                   class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Limpar filtros</a>
+                <button type="submit"
+                        class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700">Aplicar filtros</button>
+            </div>
+        </form>
     </div>
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Saídas</p>
-        <p class="mt-1 text-xl font-bold text-red-600">R$ {{ saidas }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Resultado</p>
-        <p class="mt-1 text-xl font-bold {% if resultado >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">R$ {{ resultado }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">Vencido</p>
-        <p class="mt-1 text-xl font-bold text-amber-600">R$ {{ vencido }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <p class="text-xs uppercase tracking-wide text-slate-500">A vencer</p>
-        <p class="mt-1 text-xl font-bold text-slate-700">R$ {{ a_vencer }}</p>
-    </div>
-</div>
 
-<div class="grid lg:grid-cols-2 gap-6 mb-8">
-    <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Fluxo do período</h2>
-        <table class="min-w-full divide-y divide-slate-100 text-sm">
-            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr><th class="px-4 py-2">Data</th><th class="px-4 py-2">Entradas</th><th class="px-4 py-2">Saídas</th><th class="px-4 py-2">Resultado</th><th class="px-4 py-2">Acumulado</th></tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-                {% for dia in fluxo %}
+    <!-- Indicadores -->
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between">
+                <p class="text-sm font-semibold text-slate-500">Recebido hoje</p>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    {% include "partials/icon.html" with name="calendar" class="h-4 w-4" %}
+                </span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold text-slate-900">R$ {{ recebido_hoje }}</p>
+            <p class="mt-1 flex items-center gap-1 text-xs font-medium {% if pct_hoje is not None %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                {% if pct_hoje is not None %}
+                    {% include "partials/icon.html" with name="trending-up" class="h-3.5 w-3.5" %}
+                    {% if pct_hoje >= 0 %}+{% endif %}{{ pct_hoje|floatformat:1 }}% em relação a ontem
+                {% else %}sem dados de ontem para comparar{% endif %}
+            </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between">
+                <p class="text-sm font-semibold text-slate-500">Recebido na semana</p>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    {% include "partials/icon.html" with name="calendar" class="h-4 w-4" %}
+                </span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold text-slate-900">R$ {{ recebido_semana }}</p>
+            <p class="mt-1 flex items-center gap-1 text-xs font-medium {% if pct_semana is not None %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                {% if pct_semana is not None %}
+                    {% include "partials/icon.html" with name="trending-up" class="h-3.5 w-3.5" %}
+                    {% if pct_semana >= 0 %}+{% endif %}{{ pct_semana|floatformat:1 }}% em relação à semana passada
+                {% else %}sem dados da semana anterior{% endif %}
+            </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between">
+                <p class="text-sm font-semibold text-slate-500">Recebido no mês</p>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    {% include "partials/icon.html" with name="calendar" class="h-4 w-4" %}
+                </span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold text-slate-900">R$ {{ recebido_mes }}</p>
+            <p class="mt-1 flex items-center gap-1 text-xs font-medium {% if pct_mes is not None %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                {% if pct_mes is not None %}
+                    {% include "partials/icon.html" with name="trending-up" class="h-3.5 w-3.5" %}
+                    {% if pct_mes >= 0 %}+{% endif %}{{ pct_mes|floatformat:1 }}% em relação ao mês passado
+                {% else %}sem dados do mês anterior{% endif %}
+            </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between">
+                <p class="text-sm font-semibold text-slate-500">Total no período</p>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    {% include "partials/icon.html" with name="money" class="h-4 w-4" %}
+                </span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold text-slate-900">R$ {{ total_periodo }}</p>
+            <p class="mt-1 text-xs font-medium text-slate-400">{{ inicio|date:"d/m/Y" }} - {{ fim|date:"d/m/Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-5">
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-slate-900">Recebimentos no período</h2>
+                <div class="flex rounded-xl bg-slate-100 p-1">
+                    <button type="button" data-modo="diario" class="modo-grafico rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors bg-blue-600">Diário</button>
+                    <button type="button" data-modo="semanal" class="modo-grafico rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:text-slate-700">Semanal</button>
+                    <button type="button" data-modo="mensal" class="modo-grafico rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:text-slate-700">Mensal</button>
+                </div>
+            </div>
+            <div id="grafico-linha" class="relative h-72"></div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
+            <h2 class="mb-4 text-base font-bold text-slate-900">Recebimentos por forma de pagamento</h2>
+            <div class="flex items-center gap-5">
+                <div class="relative h-44 w-44 shrink-0">
+                    <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="14"></circle>
+                        <circle id="donut-segmentos" cx="60" cy="60" r="50" fill="none" stroke-width="14" stroke-linecap="butt"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-xs font-medium text-slate-400">Total</span>
+                        <span class="text-sm font-extrabold text-slate-900">R$ {{ total_formas }}</span>
+                    </div>
+                </div>
+                <ul id="legenda-formas" class="min-w-0 flex-1 space-y-2.5"></ul>
+            </div>
+        </section>
+    </div>
+
+    <!-- Tabelas -->
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:col-span-3">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Resumo por dia</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <tr>
-                        <td class="px-4 py-2">{{ dia.data|date:"d/m/Y" }}</td>
-                        <td class="px-4 py-2 text-emerald-600">{{ dia.entradas }}</td>
-                        <td class="px-4 py-2 text-red-600">{{ dia.saidas }}</td>
-                        <td class="px-4 py-2 font-medium">{{ dia.resultado }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ dia.acumulado }}</td>
+                        <th class="px-5 py-3">Data</th>
+                        <th class="px-5 py-3 text-right">Recebimentos</th>
+                        <th class="px-5 py-3 text-right">Vendas</th>
+                        <th class="px-5 py-3 text-right">Ticket médio</th>
+                        <th class="px-5 py-3 text-right">Transações</th>
                     </tr>
-                {% empty %}
-                    <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Sem movimentações no período.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for linha in resumo_dia %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 font-medium text-slate-700">
+                                {{ linha.data|date:"d/m/Y" }}
+                                {% if linha.data == inicio and periodo == 'hoje' %}<span class="ml-1.5 rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-600">Hoje</span>{% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-right font-semibold text-emerald-600">R$ {{ linha.recebimentos }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">{{ linha.vendas }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">R$ {{ linha.ticket_medio }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">{{ linha.transacoes }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="px-5 py-8 text-center text-slate-400">Sem vendas finalizadas no período.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="border-t border-slate-100 px-5 py-3">
+                <a href="?periodo=30d" class="text-sm font-semibold text-blue-600 transition-colors hover:text-blue-800">Ver todos os dias →</a>
+            </div>
+        </section>
 
-    <div class="space-y-6">
-        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Entradas por categoria</h2>
-            <ul class="divide-y divide-slate-50 text-sm">
-                {% for linha in categorias_entradas %}
-                    <li class="flex justify-between px-4 py-2"><span>{{ linha.categoria }}</span><span class="font-medium text-emerald-600">{{ linha.total }}</span></li>
-                {% empty %}<li class="px-4 py-6 text-center text-slate-400">Sem dados.</li>{% endfor %}
-            </ul>
-        </section>
-        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Saídas por categoria</h2>
-            <ul class="divide-y divide-slate-50 text-sm">
-                {% for linha in categorias_saidas %}
-                    <li class="flex justify-between px-4 py-2"><span>{{ linha.categoria }}</span><span class="font-medium text-red-600">{{ linha.total }}</span></li>
-                {% empty %}<li class="px-4 py-6 text-center text-slate-400">Sem dados.</li>{% endfor %}
-            </ul>
-        </section>
-        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <h2 class="px-4 py-3 text-sm font-semibold text-slate-700 border-b border-slate-100">Contas</h2>
-            <ul class="divide-y divide-slate-50 text-sm">
-                {% for conta in contas %}
-                    <li class="flex justify-between px-4 py-2"><span>{{ conta.nome }} <span class="text-xs text-slate-400">({{ conta.tipo }})</span></span><span class="font-medium">{{ conta.saldo_atual }}</span></li>
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:col-span-2">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Resumo por categoria</h2>
+            <ul class="space-y-4 px-5 py-4">
+                {% for linha in por_categoria %}
+                    <li>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">{{ linha.nome }}</span>
+                            <span class="text-slate-500">R$ {{ linha.total }} · <span class="font-semibold text-slate-700">{{ linha.pct|floatformat:1 }}%</span></span>
+                        </div>
+                        <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full bg-blue-500" style="width: {{ linha.pct|floatformat:0 }}%"></div>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="py-6 text-center text-slate-400">Sem vendas no período.</li>
                 {% endfor %}
             </ul>
+            <div class="border-t border-slate-100 px-5 py-3">
+                <a href="?periodo={{ periodo }}" class="text-sm font-semibold text-blue-600 transition-colors hover:text-blue-800">Ver todas as categorias →</a>
+            </div>
         </section>
     </div>
 </div>
+{% endblock %}
 
-<div class="flex gap-3 text-sm">
-    <a href="{% url 'financial:entradas' %}" class="text-indigo-600 hover:text-indigo-800">Ver entradas &rarr;</a>
-    <a href="{% url 'financial:saidas' %}" class="text-indigo-600 hover:text-indigo-800">Ver saídas &rarr;</a>
-    <a href="{% url 'financial:receber' %}" class="text-indigo-600 hover:text-indigo-800">Contas a receber &rarr;</a>
-</div>
+{% block shell_scripts %}
+<script>
+(function () {
+    var serie = {{ serie_json|safe }};
+    var formas = {{ por_forma_json|safe }};
+
+    // ---------- Painel de filtros ----------
+    var btnFiltros = document.getElementById("btn-filtros");
+    var painelFiltros = document.getElementById("painel-filtros");
+    if (btnFiltros && painelFiltros) {
+        btnFiltros.addEventListener("click", function () {
+            painelFiltros.classList.toggle("hidden");
+        });
+    }
+
+    // ---------- Gráfico de linha ----------
+    var MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+    function inicioDaSemana(dia) {
+        var partes = dia.split("/");
+        var data = new Date(partes[2], partes[1] - 1, partes[0]);
+        var desloc = (data.getDay() + 6) % 7;
+        data.setDate(data.getDate() - desloc);
+        return String(data.getDate()).padStart(2, "0") + "/" + String(data.getMonth() + 1).padStart(2, "0");
+    }
+
+    function agrupar(modo) {
+        var grupos = [];
+        serie.forEach(function (item) {
+            var chave, rotulo;
+            if (modo === "semanal") {
+                chave = inicioDaSemana(item.data);
+                rotulo = chave;
+            } else if (modo === "mensal") {
+                var partes = item.data.split("/");
+                chave = partes[2] + "-" + partes[1];
+                rotulo = MESES[parseInt(partes[1], 10) - 1] + "/" + partes[2].slice(2);
+            } else {
+                chave = item.data;
+                rotulo = item.data.slice(0, 5);
+            }
+            var ultimo = grupos.length ? grupos[grupos.length - 1] : null;
+            if (ultimo && ultimo.chave === chave) {
+                ultimo.total += item.total;
+            } else {
+                grupos.push({ chave: chave, rotulo: rotulo, total: item.total });
+            }
+        });
+        return grupos;
+    }
+
+    function formatarReais(valor) {
+        return "R$ " + valor.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function renderLinha(modo) {
+        var container = document.getElementById("grafico-linha");
+        if (!container) return;
+        var pontos = agrupar(modo);
+        var maximo = pontos.reduce(function (acum, p) { return Math.max(acum, p.total); }, 0);
+        var topo = Math.max(1000, Math.ceil((maximo || 1) / 1000) * 1000);
+        var W = 720, H = 260, padE = 60, padD = 16, padT = 16, padB = 30;
+        var largura = W - padE - padD, altura = H - padT - padB;
+        var n = pontos.length || 1;
+
+        function x(i) { return padE + (largura * i) / (n - 1); }
+        function y(v) { return padT + altura * (1 - v / topo); }
+
+        var coords = pontos.map(function (p, i) { return [x(i), y(p.total)]; });
+        var linha = coords.map(function (c) { return c[0].toFixed(1) + "," + c[1].toFixed(1); }).join(" ");
+        var area = "M" + coords[0][0].toFixed(1) + "," + (H - padB) +
+            " L" + coords.map(function (c) { return c[0].toFixed(1) + "," + c[1].toFixed(1); }).join(" L") +
+            " L" + coords[coords.length - 1][0].toFixed(1) + "," + (H - padB) + " Z";
+
+        var rotulosY = "";
+        for (var t = 0; t <= 4; t++) {
+            var valor = (topo * t) / 4;
+            var posY = padT + altura * (1 - t / 4);
+            rotulosY += '<text x="' + (padE - 10) + '" y="' + (posY + 4) + '" text-anchor="end" class="fill-slate-400" font-size="10">' + formatarReais(valor) + '</text>';
+            rotulosY += '<line x1="' + padE + '" y1="' + posY + '" x2="' + (W - padD) + '" y2="' + posY + '" stroke="#e2e8f0" stroke-dasharray="3,4" stroke-width="1"></line>';
+        }
+
+        var passoRotulo = Math.max(1, Math.ceil(n / 7));
+        var rotulosX = "";
+        pontos.forEach(function (p, i) {
+            if (i % passoRotulo !== 0 && i !== n - 1) return;
+            rotulosX += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" class="fill-slate-400" font-size="10">' + p.rotulo + '</text>';
+        });
+
+        var circulos = "";
+        pontos.forEach(function (p, i) {
+            circulos += '<circle class="ponto-dado" data-indice="' + i + '" data-rotulo="' + p.rotulo + '" data-total="' + p.total + '" cx="' + coords[i][0].toFixed(1) + '" cy="' + coords[i][1].toFixed(1) + '" r="4" fill="#2563eb" stroke="#ffffff" stroke-width="2" style="cursor:pointer"></circle>';
+        });
+
+        container.innerHTML =
+            '<div class="relative h-full w-full">' +
+            '<div id="tooltip-grafico" class="pointer-events-none absolute z-10 hidden -translate-x-1/2 rounded-lg bg-navy-900 px-2.5 py-1.5 text-center shadow-lg">' +
+            '<p id="tooltip-rotulo" class="text-[11px] font-semibold text-slate-300"></p>' +
+            '<p id="tooltip-valor" class="text-sm font-bold text-white"></p>' +
+            '</div>' +
+            '<svg viewBox="0 0 ' + W + ' ' + H + '" class="h-full w-full" preserveAspectRatio="none">' +
+            '<defs><linearGradient id="gradiente-area" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#2563eb" stop-opacity="0.14"></stop>' +
+            '<stop offset="100%" stop-color="#2563eb" stop-opacity="0"></stop>' +
+            '</linearGradient></defs>' +
+            rotulosY +
+            '<path d="' + area + '" fill="url(#gradiente-area)"></path>' +
+            '<polyline points="' + linha + '" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>' +
+            circulos + rotulosX +
+            '</svg>' +
+            '</div>';
+
+        var tooltip = container.querySelector("#tooltip-grafico");
+        container.querySelectorAll(".ponto-dado").forEach(function (circulo) {
+            circulo.addEventListener("mousemove", function (evento) {
+                tooltip.querySelector("#tooltip-rotulo").textContent = circulo.getAttribute("data-rotulo");
+                tooltip.querySelector("#tooltip-valor").textContent = formatarReais(parseFloat(circulo.getAttribute("data-total")));
+                tooltip.classList.remove("hidden");
+                var box = container.getBoundingClientRect();
+                tooltip.style.left = (evento.clientX - box.left) + "px";
+                tooltip.style.top = (evento.clientY - box.top - 46) + "px";
+            });
+            circulo.addEventListener("mouseleave", function () {
+                tooltip.classList.add("hidden");
+            });
+        });
+    }
+
+    document.querySelectorAll(".modo-grafico").forEach(function (botao) {
+        botao.addEventListener("click", function () {
+            document.querySelectorAll(".modo-grafico").forEach(function (b) {
+                b.classList.remove("bg-blue-600", "text-white");
+                b.classList.add("text-slate-500");
+            });
+            botao.classList.add("bg-blue-600", "text-white");
+            botao.classList.remove("text-slate-500");
+            renderLinha(botao.getAttribute("data-modo"));
+        });
+    });
+    renderLinha("diario");
+
+    // ---------- Gráfico de rosca ----------
+    var PALETA = ["#10b981", "#2563eb", "#7c3aed", "#f59e0b", "#0ea5e9", "#f43f5e", "#64748b"];
+    var CIRCUNFERENCIA = 2 * Math.PI * 50;
+    var segmentos = "";
+    var deslocamento = 0;
+    var legenda = "";
+
+    formas.forEach(function (forma, i) {
+        var cor = PALETA[i % PALETA.length];
+        var nome = forma.nome.toLowerCase();
+        if (nome.indexOf("dinheiro") !== -1) cor = "#10b981";
+        else if (nome.indexOf("débito") !== -1 || nome.indexOf("debito") !== -1) cor = "#2563eb";
+        else if (nome.indexOf("crédito") !== -1 || nome.indexOf("credito") !== -1) cor = "#7c3aed";
+        else if (nome.indexOf("pix") !== -1) cor = "#f59e0b";
+        var comprimento = (forma.pct / 100) * CIRCUNFERENCIA;
+        segmentos += '<circle cx="60" cy="60" r="50" fill="none" stroke="' + cor + '" stroke-width="14" ' +
+            'stroke-dasharray="' + comprimento.toFixed(2) + ' ' + (CIRCUNFERENCIA - comprimento).toFixed(2) + '" ' +
+            'stroke-dashoffset="' + (-deslocamento).toFixed(2) + '"></circle>';
+        deslocamento += comprimento;
+        legenda += '<li class="flex items-center justify-between gap-2 text-sm">' +
+            '<span class="flex min-w-0 items-center gap-2"><span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:' + cor + '"></span>' +
+            '<span class="truncate font-medium text-slate-600">' + forma.nome + '</span></span>' +
+            '<span class="shrink-0 text-xs text-slate-400">' + forma.pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + '% · <span class="font-semibold text-slate-700">R$ ' + forma.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) + '</span></span>' +
+            '</li>';
+    });
+
+    var alvoSegmentos = document.getElementById("donut-segmentos");
+    var alvoLegenda = document.getElementById("legenda-formas");
+    if (alvoSegmentos && formas.length) {
+        alvoSegmentos.outerHTML = segmentos;
+    } else if (alvoLegenda && !formas.length) {
+        alvoLegenda.innerHTML = '<li class="py-4 text-center text-sm text-slate-400">Sem pagamentos no período.</li>';
+    }
+    if (alvoLegenda && formas.length) {
+        alvoLegenda.innerHTML = legenda;
+    }
+})();
+</script>
 {% endblock %}

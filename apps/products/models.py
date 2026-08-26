@@ -18,6 +18,11 @@ from apps.core.tenancy import TenantAwareModel
 ZERO = Decimal("0")
 
 
+def _caminho_imagem_produto(instance, filename):
+    """Imagem do produto isolada por tenant no armazenamento."""
+    return f"produtos/{instance.tenant_id}/{instance.uuid}/{filename}"
+
+
 class Categoria(TenantAwareModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     tenant = models.ForeignKey(
@@ -173,6 +178,18 @@ class Produto(TenantAwareModel):
     )
     ativo = models.BooleanField("ativo", default=True, db_index=True)
     observacao = models.TextField("observação", blank=True)
+    ncm = models.CharField(
+        "NCM",
+        max_length=8,
+        blank=True,
+        help_text="Nomenclatura Comum do Mercosul (8 dígitos).",
+    )
+    imagem = models.FileField(
+        "imagem do produto",
+        upload_to=_caminho_imagem_produto,
+        blank=True,
+        help_text="PNG, JPG ou WEBP até 2MB.",
+    )
     data_cadastro = models.DateTimeField("criado em", auto_now_add=True)
     data_atualizacao = models.DateTimeField("atualizado em", auto_now=True)
 

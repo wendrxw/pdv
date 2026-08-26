@@ -1,66 +1,73 @@
-{% extends "sales/pdv_base.html" %}
-{% block pdv_title %}Caixa{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Caixa{% endblock %}
 
-{% block pdv_content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-6">Frente de caixa</h1>
+{% block shell_content %}
+<div class="mx-auto max-w-6xl p-6">
+    <div class="mb-6 flex items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Frente de caixa</h1>
+            <p class="mt-0.5 text-sm text-slate-500">Abra o caixa e comece a vender.</p>
+        </div>
+    </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <section class="lg:col-span-2 space-y-4">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Meus caixas abertos</h2>
-        {% for caixa in caixas_abertos %}
-            <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-center justify-between gap-4">
-                <div>
-                    <p class="font-semibold text-slate-900">
-                        {{ caixa.conta_financeira.nome }} · {{ caixa.operador.get_full_name|default:caixa.operador.username }}
-                        {% if caixa.operador_id == user.pk %}<span class="ml-1 text-xs bg-emerald-100 text-emerald-700 rounded px-2 py-0.5">seu turno</span>{% endif %}
-                    </p>
-                    <p class="text-sm text-slate-500">Aberto em {{ caixa.data_abertura|date:"d/m H:i" }} · Troco inicial R$ {{ caixa.saldo_inicial }}</p>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section class="space-y-4 lg:col-span-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Meus caixas abertos</h2>
+            {% for caixa in caixas_abertos %}
+                <div class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div>
+                        <p class="font-semibold text-slate-900">
+                            {{ caixa.conta_financeira.nome }} · {{ caixa.operador.get_full_name|default:caixa.operador.username }}
+                            {% if caixa.operador_id == user.pk %}<span class="ml-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">seu turno</span>{% endif %}
+                        </p>
+                        <p class="mt-1 text-sm text-slate-500">Aberto em {{ caixa.data_abertura|date:"d/m H:i" }} · Troco inicial R$ {{ caixa.saldo_inicial }}</p>
+                    </div>
+                    <div class="flex shrink-0 gap-2">
+                        <form method="post" action="{% url 'sales:nova_venda' caixa_uuid=caixa.uuid %}">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-xl bg-emerald-600 px-5 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-700">Nova venda</button>
+                        </form>
+                        <a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="self-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Conferir / Fechar caixa</a>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <form method="post" action="{% url 'sales:nova_venda' caixa_uuid=caixa.uuid %}">
+            {% empty %}
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+                    <p class="text-slate-500">Nenhum caixa aberto. Abra um caixa ao lado para começar a vender.</p>
+                    <form method="post" action="{% url 'sales:nova_venda_rapida' %}" class="mt-4">
                         {% csrf_token %}
-                        <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-3 text-base font-bold text-white hover:bg-emerald-700">Nova venda</button>
+                        <button type="submit" class="rounded-xl bg-emerald-600 px-5 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-700">
+                            Iniciar venda agora (abre o caixa automaticamente)
+                        </button>
                     </form>
-                    <a href="{% url 'sales:caixa_detalhe' caixa.uuid %}" class="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium hover:bg-slate-50 self-center">Conferir / Fechar caixa</a>
                 </div>
-            </div>
-        {% empty %}
-            <div class="bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center">
-                <p class="text-slate-500">Nenhum caixa aberto. Abra um caixa ao lado para começar a vender.</p>
-                <form method="post" action="{% url 'sales:nova_venda_rapida' %}" class="mt-4">
-                    {% csrf_token %}
-                    <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-3 text-base font-bold text-white hover:bg-emerald-700">
-                        Iniciar venda agora (abre o caixa automaticamente)
-                    </button>
-                </form>
-            </div>
-        {% endfor %}
-
-        {% if vendas_abertas %}
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 pt-4">Vendas em andamento</h2>
-            {% for venda in vendas_abertas %}
-                <a href="{% url 'sales:venda_tela' venda.uuid %}" class="block bg-white rounded-xl border border-amber-200 p-4 hover:border-amber-400">
-                    Venda #{{ venda.numero }} · {{ venda.caixa.conta_financeira.nome }} · R$ {{ venda.total }}
-                    <span class="text-xs text-amber-600 ml-2">retomar</span>
-                </a>
             {% endfor %}
-        {% endif %}
-    </section>
 
-    <aside class="bg-white rounded-xl border border-slate-200 p-6 h-fit">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Abrir caixa</h2>
-        <p class="text-sm text-slate-500 mb-4">
-            O caixa usa automaticamente a conta principal do seu ambiente.
-        </p>
-        <form method="post" class="space-y-4">
-            {% csrf_token %}
-            <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ form.saldo_inicial.label }}</label>
-                {{ form.saldo_inicial }}
-                {% if form.saldo_inicial.errors %}<p class="text-sm text-red-600 mt-1">{{ form.saldo_inicial.errors.0 }}</p>{% endif %}
-            </div>
-            <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700">Abrir caixa</button>
-        </form>
-    </aside>
+            {% if vendas_abertas %}
+                <h2 class="pt-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Vendas em andamento</h2>
+                {% for venda in vendas_abertas %}
+                    <a href="{% url 'sales:venda_tela' venda.uuid %}" class="block rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition-colors hover:border-amber-400">
+                        Venda #{{ venda.numero }} · {{ venda.caixa.conta_financeira.nome }} · R$ {{ venda.total }}
+                        <span class="ml-2 text-xs font-semibold text-amber-600">retomar</span>
+                    </a>
+                {% endfor %}
+            {% endif %}
+        </section>
+
+        <aside class="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Abrir caixa</h2>
+            <p class="mt-2 text-sm text-slate-500">
+                O caixa usa automaticamente a conta principal do seu ambiente.
+            </p>
+            <form method="post" class="mt-4 space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">{{ form.saldo_inicial.label }}</label>
+                    {{ form.saldo_inicial }}
+                    {% if form.saldo_inicial.errors %}<p class="mt-1 text-sm text-red-600">{{ form.saldo_inicial.errors.0 }}</p>{% endif %}
+                </div>
+                <button type="submit" class="w-full rounded-xl bg-blue-600 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-700">Abrir caixa</button>
+            </form>
+        </aside>
+    </div>
 </div>
 {% endblock %}

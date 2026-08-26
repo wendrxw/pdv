@@ -21,7 +21,7 @@ from apps.printing.services import (
     criar_print_job,
     reativar_print_job,
 )
-from apps.products.models import Produto
+from apps.products.models import Categoria, Produto
 
 from .forms import (
     AbrirCaixaForm,
@@ -46,6 +46,7 @@ from .services import (
 )
 
 ITENS_POR_PAGINA = 25
+PRODUTOS_POR_PAGINA_PDV = 9
 
 
 def _tenant_atual(request, modulo="PDV"):
@@ -159,6 +160,21 @@ def venda_tela(request, uuid):
 
     formas = FormaPagamento.objects.for_tenant(tenant).filter(ativo=True)
     pago = sum(p.valor for p in venda.pagamentos.all())
+
+    categoria_uuid = request.GET.get("cat", "").strip()
+    produtos = Produto.objects.for_tenant(tenant).filter(ativo=True)
+    if categoria_uuid:
+        produtos = produtos.filter(categoria__uuid=categoria_uuid)
+    produtos = produtos.select_related("categoria", "estoque").order_by("nome")
+    pagina_produtos = Paginator(produtos, PRODUTOS_POR_PAGINA_PDV).get_page(
+        request.GET.get("page")
+    )
+    faixa_paginacao = (
+        pagina_produtos.paginator.get_elided_page_range(pagina_produtos.number)
+        if pagina_produtos.paginator.num_pages > 1
+        else []
+    )
+
     return render(
         request,
         "sales/venda.html",
@@ -170,6 +186,10 @@ def venda_tela(request, uuid):
             "pago": pago,
             "falta": venda.total - pago,
             "pagamento_form": PagamentoVendaForm(tenant=tenant),
+            "categorias": Categoria.objects.for_tenant(tenant).filter(ativo=True),
+            "categoria_selecionada": categoria_uuid,
+            "produtos": pagina_produtos,
+            "faixa_paginacao": faixa_paginacao,
         },
     )
 
@@ -197,6 +217,12 @@ def _executar_acao_venda(request, venda, acao):
         if desconto is None:
             raise SalesError("Desconto inválido.")
         aplicar_desconto(venda, desconto, usuario=usuario)
+    elif acao == "cliente":
+        if venda.status != Venda.Status.ABERTA:
+            raise SalesError("A venda não está aberta.")
+        cliente_nome = request.POST.get("cliente_nome", "").strip()[:200]
+        venda.cliente_nome = cliente_nome
+        venda.save(update_fields=["cliente_nome"])
     elif acao == "pagamento":
         pagamento_form = PagamentoVendaForm(request.POST, tenant=venda.tenant)
         valor = _decimal(request.POST.get("valor"))

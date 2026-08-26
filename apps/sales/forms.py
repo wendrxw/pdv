@@ -2,6 +2,12 @@ from django import forms
 
 from apps.financial.models import FormaPagamento
 
+INPUT_CLASS = (
+    "w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm "
+    "text-slate-900 placeholder-slate-400 focus:border-blue-500 "
+    "focus:outline-none focus:ring-1 focus:ring-blue-500"
+)
+
 
 class AbrirCaixaForm(forms.Form):
     saldo_inicial = forms.DecimalField(
@@ -11,6 +17,7 @@ class AbrirCaixaForm(forms.Form):
         min_value=0,
         initial=0,
         required=False,
+        widget=forms.NumberInput(attrs={"class": INPUT_CLASS, "step": "0.01"}),
     )
 
 
@@ -49,3 +56,8 @@ class PagamentoVendaForm(forms.Form):
             self.fields["forma_pagamento"].queryset = (
                 FormaPagamento.objects.for_tenant(tenant).filter(ativo=True)
             )
+        self.fields["forma_pagamento"].widget.attrs["class"] = (
+            "mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm "
+            "focus:border-emerald-500 focus:outline-none focus:ring-2 "
+            "focus:ring-emerald-100"
+        )

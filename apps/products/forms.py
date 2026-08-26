@@ -9,6 +9,9 @@ INPUT_CLASS = (
     "focus:ring-1 focus:ring-indigo-500"
 )
 
+TAMANHO_MAXIMO_IMAGEM = 2 * 1024 * 1024
+EXTENSOES_PERMITIDAS_IMAGEM = {"png", "jpg", "jpeg", "webp"}
+
 
 class CategoriaForm(forms.ModelForm):
     class Meta:
@@ -32,6 +35,12 @@ class MarcaForm(forms.ModelForm):
 class ProdutoForm(forms.ModelForm):
     """Formulário de produto com querysets restritos ao tenant."""
 
+    imagem = forms.FileField(
+        required=False,
+        label="Imagem do produto",
+        help_text="PNG, JPG ou WEBP — tamanho máximo 2MB.",
+    )
+
     class Meta:
         model = Produto
         fields = (
@@ -48,11 +57,13 @@ class ProdutoForm(forms.ModelForm):
             "estoque_maximo",
             "descricao",
             "observacao",
+            "ncm",
+            "imagem",
             "ativo",
         )
         widgets = {
             "nome": forms.TextInput(
-                attrs={"class": INPUT_CLASS, "placeholder": "Nome do produto"}
+                attrs={"class": INPUT_CLASS, "placeholder": "Ex.: Coca-Cola 350ml"}
             ),
             "sku": forms.TextInput(
                 attrs={"class": INPUT_CLASS, "placeholder": "Ex.: CAM-001-PRETO-M"}
@@ -60,7 +71,7 @@ class ProdutoForm(forms.ModelForm):
             "codigo_barras": forms.TextInput(
                 attrs={
                     "class": INPUT_CLASS,
-                    "placeholder": "EAN-13 (deixe vazio para gerar)",
+                    "placeholder": "Ex.: 7891234567890",
                     "inputmode": "numeric",
                     "maxlength": 13,
                     "data-barcode-input": True,
@@ -81,8 +92,33 @@ class ProdutoForm(forms.ModelForm):
             "estoque_maximo": forms.NumberInput(
                 attrs={"class": INPUT_CLASS, "step": "0.001"}
             ),
-            "descricao": forms.Textarea(attrs={"class": INPUT_CLASS, "rows": 2}),
-            "observacao": forms.Textarea(attrs={"class": INPUT_CLASS, "rows": 2}),
+            "ncm": forms.TextInput(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "placeholder": "Ex.: 21069030",
+                    "inputmode": "numeric",
+                    "maxlength": 8,
+                }
+            ),
+            "ativo": forms.Select(
+                choices=[(True, "Ativo"), (False, "Inativo")]
+            ),
+            "descricao": forms.Textarea(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "rows": 4,
+                    "placeholder": "Descrição detalhada do produto...",
+                    "maxlength": 255,
+                }
+            ),
+            "observacao": forms.Textarea(
+                attrs={
+                    "class": INPUT_CLASS,
+                    "rows": 4,
+                    "placeholder": "Informações adicionais...",
+                    "maxlength": 255,
+                }
+            ),
         }
 
     def __init__(self, *args, tenant=None, **kwargs):
@@ -91,8 +127,31 @@ class ProdutoForm(forms.ModelForm):
         if tenant is not None:
             self.fields["categoria"].queryset = Categoria.objects.for_tenant(tenant)
             self.fields["marca"].queryset = Marca.objects.for_tenant(tenant)
-        for campo in ("categoria", "marca"):
+        self.fields["categoria"].empty_label = "Selecione uma categoria"
+        self.fields["marca"].empty_label = "Selecione uma marca"
+        for campo in ("categoria", "marca", "unidade_medida", "ativo"):
             self.fields[campo].widget.attrs["class"] = INPUT_CLASS
+
+    def clean_imagem(self):
+        arquivo = self.cleaned_data.get("imagem")
+        if not arquivo:
+            return None
+        extensao = (
+            arquivo.name.rsplit(".", 1)[-1].lower() if "." in arquivo.name else ""
+        )
+        if extensao not in EXTENSOES_PERMITIDAS_IMAGEM:
+            raise forms.ValidationError(
+                "Formato não suportado. Use PNG, JPG ou WEBP."
+            )
+        if arquivo.size > TAMANHO_MAXIMO_IMAGEM:
+            raise forms.ValidationError("A imagem deve ter no máximo 2MB.")
+        return arquivo
+
+    def clean_ncm(self):
+        ncm = (self.cleaned_data.get("ncm") or "").strip()
+        if ncm and not ncm.isdigit():
+            raise forms.ValidationError("O NCM deve conter apenas dígitos.")
+        return ncm
 
     def clean_codigo_barras(self):
         codigo = (self.cleaned_data.get("codigo_barras") or "").strip()

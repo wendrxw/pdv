@@ -161,6 +161,38 @@ class VendaTelaViewTest(ViewsBaseTestCase):
         self.venda.refresh_from_db()
         self.assertEqual(self.venda.desconto, Decimal("4.00"))
 
+    def test_post_cliente_define_nome(self):
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente_nome": "Maria da Silva"},
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.cliente_nome, "Maria da Silva")
+
+    def test_post_cliente_em_venda_finalizada_falha(self):
+        from ..services import finalizar_venda
+
+        finalizar_venda(
+            self.venda, usuario=self.user, forma_pagamento=self.dinheiro
+        )
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente_nome": "Tarde demais"},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.cliente_nome, "")
+
+    def test_get_exibe_catalogo_de_produtos(self):
+        resposta = self.client.get(
+            reverse("sales:venda_tela", args=[self.venda.uuid])
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Venda atual")
+        self.assertContains(resposta, "Estoque:")
+
     def test_post_finaliza_venda(self):
         resposta = self.client.post(
             reverse("sales:venda_tela", args=[self.venda.uuid]),

@@ -41,12 +41,13 @@ class ProdutoAdmin(admin.ModelAdmin):
         "categoria",
         "marca",
         "unidade_medida",
+        "ncm",
         "preco_venda",
         "ativo",
         "data_cadastro",
     )
     list_filter = ("tenant", "ativo", "categoria", "marca", "unidade_medida")
-    search_fields = ("nome", "sku", "uuid")
+    search_fields = ("nome", "sku", "codigo_barras", "ncm", "uuid")
     ordering = ("nome",)
     readonly_fields = ("uuid", "data_cadastro", "data_atualizacao")
     actions = [desativar_produtos, reativar_produtos]

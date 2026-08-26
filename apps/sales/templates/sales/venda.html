@@ -1,180 +1,380 @@
-{% extends "sales/pdv_base.html" %}
-{% block pdv_title %}Venda #{{ venda.numero }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Venda #{{ venda.numero }}{% endblock %}
+{% block shell_content %}
 
-{% block pdv_content %}
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+<div class="flex h-full gap-4 p-4">
 
-    <!-- Coluna esquerda: leitura e busca -->
-    <section class="lg:col-span-2 space-y-4">
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <label for="codigo" class="block text-sm font-semibold text-slate-600 mb-2">Código / nome do produto</label>
-            <input id="codigo" name="codigo" type="text" autofocus autocomplete="off"
-                   placeholder="Leia o código de barras ou digite…"
-                   class="w-full rounded-lg border border-slate-300 px-4 py-3 text-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none">
-            <ul id="resultados" class="mt-3 divide-y divide-slate-100 text-sm hidden"></ul>
-            <p class="text-xs text-slate-400 mt-2">Enter no campo busca e adiciona o primeiro resultado.</p>
-        </div>
+    <!-- Coluna esquerda: catálogo -->
+    <section class="flex min-w-0 flex-1 flex-col gap-4">
+        <div class="flex min-h-0 flex-1 gap-4">
 
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Desconto (R$)</h2>
-            <form method="post" class="flex gap-2">
-                {% csrf_token %}
-                <input type="hidden" name="acao" value="desconto">
-                <input name="desconto" type="number" step="0.01" min="0" max="{{ venda.subtotal }}" value="{{ venda.desconto }}"
-                       class="w-full rounded-lg border border-slate-300 px-4 py-3 text-lg">
-                <button type="submit" class="rounded-lg bg-slate-800 px-4 py-3 font-medium text-white hover:bg-slate-700">Aplicar</button>
-            </form>
-        </div>
-
-        <div class="bg-white rounded-xl border border-red-100 p-5">
-            <form method="post" onsubmit="return confirm('Cancelar a venda inteira?');">
-                {% csrf_token %}
-                <input type="hidden" name="acao" value="cancelar">
-                <input name="motivo" type="text" placeholder="Motivo do cancelamento"
-                       class="w-full rounded-lg border border-slate-300 px-4 py-2 mb-2 text-sm">
-                <button type="submit" class="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-3 font-bold text-red-700 hover:bg-red-100">Cancelar venda</button>
-            </form>
-        </div>
-    </section>
-
-    <!-- Coluna direita: carrinho, totais, pagamento -->
-    <section class="lg:col-span-3 space-y-4">
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <table class="min-w-full divide-y divide-slate-100 text-base">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                        <th class="px-4 py-3">Produto</th>
-                        <th class="px-4 py-3">Qtd.</th>
-                        <th class="px-4 py-3">Preço</th>
-                        <th class="px-4 py-3">Subtotal</th>
-                        <th class="px-4 py-3"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    {% for item in itens %}
-                        <tr>
-                            <td class="px-4 py-3">{{ item.produto.nome }}</td>
-                            <td class="px-4 py-3">{{ item.quantidade }}</td>
-                            <td class="px-4 py-3">R$ {{ item.preco_unitario }}</td>
-                            <td class="px-4 py-3 font-semibold">R$ {{ item.subtotal }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <form method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="acao" value="remover_item">
-                                    <input type="hidden" name="item" value="{{ item.uuid }}">
-                                    <button type="submit" class="text-red-600 hover:underline text-sm font-medium">remover</button>
-                                </form>
-                            </td>
-                        </tr>
+            <!-- Categorias -->
+            <nav class="w-48 shrink-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <h2 class="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-slate-400">Categorias</h2>
+                <ul class="space-y-1">
+                    <li>
+                        <a href="{% url 'sales:venda_tela' venda.uuid %}"
+                           class="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors
+                           {% if not categoria_selecionada %}bg-blue-50 text-blue-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                            Todas
+                        </a>
+                    </li>
+                    {% for categoria in categorias %}
+                        <li>
+                            <a href="{% url 'sales:venda_tela' venda.uuid %}?cat={{ categoria.uuid }}"
+                               class="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors
+                               {% if categoria_selecionada == categoria.uuid|stringformat:'s' %}bg-blue-50 text-blue-700{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                                {{ categoria.nome }}
+                            </a>
+                        </li>
                     {% empty %}
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">Carrinho vazio — leia um produto para começar.</td></tr>
+                        <li class="px-3 py-2 text-sm text-slate-400">Nenhuma categoria.</li>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </ul>
+            </nav>
 
-        <div class="bg-slate-900 text-white rounded-xl p-6">
-            <div class="grid grid-cols-3 gap-4 items-end">
-                <div>
-                    <p class="text-xs uppercase tracking-wide text-slate-400">Subtotal</p>
-                    <p class="text-xl font-semibold">R$ {{ venda.subtotal }}</p>
+            <!-- Grade de produtos -->
+            <div class="flex min-w-0 flex-1 flex-col gap-3">
+                <div class="grid min-h-0 flex-1 auto-rows-min grid-cols-3 content-start gap-3 overflow-y-auto pr-1">
+                    {% for produto in produtos %}
+                        <form method="post" class="group">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="add_item">
+                            <input type="hidden" name="produto" value="{{ produto.uuid }}">
+                            <input type="hidden" name="quantidade" value="1">
+                            <button type="submit"
+                                    class="flex h-full w-full flex-col rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200">
+                                <span class="mb-2 flex h-24 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+                                    {% if produto.imagem %}
+                                        <img src="{{ produto.imagem.url }}" alt="{{ produto.nome }}" class="h-full w-full object-cover">
+                                    {% else %}
+                                        <span class="text-slate-300">{% include "partials/icon.html" with name="box" class="h-10 w-10" %}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-slate-800">{{ produto.nome }}</span>
+                                <span class="mt-1 text-lg font-bold text-blue-600">R$ {{ produto.preco_venda }}</span>
+                                <span class="mt-0.5 text-xs text-slate-400">
+                                    Estoque: {{ produto.estoque.quantidade|default:"0" }}
+                                </span>
+                            </button>
+                        </form>
+                    {% empty %}
+                        <div class="col-span-3 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-400">
+                            Nenhum produto ativo nesta categoria.
+                        </div>
+                    {% endfor %}
                 </div>
-                <div>
-                    <p class="text-xs uppercase tracking-wide text-slate-400">Desconto</p>
-                    <p class="text-xl font-semibold">R$ {{ venda.desconto }}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs uppercase tracking-wide text-emerald-400">TOTAL</p>
-                    <p class="text-5xl font-black text-emerald-400 leading-none">R$ {{ venda.total }}</p>
-                </div>
+
+                <!-- Paginação -->
+                {% if produtos.has_other_pages %}
+                <nav class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                    {% if produtos.has_previous %}
+                        <a href="?page={{ produtos.previous_page_number }}{% if categoria_selecionada %}&cat={{ categoria_selecionada }}{% endif %}"
+                           class="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                            {% include "partials/icon.html" with name="chevron-left" class="h-4 w-4" %} Anterior
+                        </a>
+                    {% else %}
+                        <span class="flex items-center gap-1 px-2 py-1 text-sm text-slate-300">
+                            {% include "partials/icon.html" with name="chevron-left" class="h-4 w-4" %} Anterior
+                        </span>
+                    {% endif %}
+                    <div class="flex items-center gap-1">
+                        {% for numero in faixa_paginacao %}
+                            {% if numero == produtos.number %}
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">{{ numero }}</span>
+                            {% elif numero == "…" %}
+                                <span class="px-1 text-sm text-slate-400">{{ numero }}</span>
+                            {% else %}
+                                <a href="?page={{ numero }}{% if categoria_selecionada %}&cat={{ categoria_selecionada }}{% endif %}"
+                                   class="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">{{ numero }}</a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if produtos.has_next %}
+                        <a href="?page={{ produtos.next_page_number }}{% if categoria_selecionada %}&cat={{ categoria_selecionada }}{% endif %}"
+                           class="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                            Próximo {% include "partials/icon.html" with name="chevron-right" class="h-4 w-4" %}
+                        </a>
+                    {% else %}
+                        <span class="flex items-center gap-1 px-2 py-1 text-sm text-slate-300">
+                            Próximo {% include "partials/icon.html" with name="chevron-right" class="h-4 w-4" %}
+                        </span>
+                    {% endif %}
+                </nav>
+                {% endif %}
             </div>
         </div>
+    </section>
 
-        <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Pagamentos</h2>
-            {% for pagamento in pagamentos %}
-                <div class="flex justify-between text-sm border-b border-slate-100 pb-2">
-                    <span>{{ pagamento.forma_pagamento.nome }}</span>
-                    <span class="font-semibold">R$ {{ pagamento.valor }}</span>
+    <!-- Coluna direita: venda atual -->
+    <aside class="flex w-[400px] shrink-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <h2 class="text-base font-bold text-slate-900">Venda atual</h2>
+            <button type="button" id="btn-limpar-venda"
+                    class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">
+                {% include "partials/icon.html" with name="trash" class="h-4 w-4" %}
+                Limpar venda
+            </button>
+        </div>
+
+        <!-- Itens -->
+        <div class="min-h-0 flex-1 overflow-y-auto px-5">
+            {% for item in itens %}
+                <div class="flex items-center gap-3 border-b border-slate-100 py-3">
+                    <span class="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">
+                        {{ item.quantidade }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-slate-800">{{ item.produto.nome }}</p>
+                        <p class="text-xs text-slate-400">R$ {{ item.preco_unitario }} cada</p>
+                    </div>
+                    <span class="shrink-0 text-sm font-bold text-slate-800">R$ {{ item.subtotal }}</span>
+                    <form method="post" class="shrink-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="remover_item">
+                        <input type="hidden" name="item" value="{{ item.uuid }}">
+                        <button type="submit" title="Remover item"
+                                class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600">
+                            {% include "partials/icon.html" with name="x" class="h-4 w-4" %}
+                        </button>
+                    </form>
                 </div>
             {% empty %}
-                <p class="text-sm text-slate-400">Nenhum pagamento registrado.</p>
+                <div class="flex h-full flex-col items-center justify-center gap-2 py-10 text-center text-slate-400">
+                    {% include "partials/icon.html" with name="cart" class="h-10 w-10 text-slate-200" %}
+                    <p class="text-sm">Carrinho vazio — toque em um produto para adicionar.</p>
+                </div>
             {% endfor %}
-            <p class="text-right text-sm {% if falta > 0 %}text-amber-600{% else %}text-emerald-600{% endif %} font-semibold">
-                {% if falta > 0 %}Falta R$ {{ falta }}{% else %}Total pago ✓{% endif %}
-            </p>
-
-            <form method="post" id="form-finalizar" class="grid grid-cols-1 gap-2 pt-2">
-                {% csrf_token %}
-                <input type="hidden" name="acao" value="finalizar">
-                <label for="{{ pagamento_form.forma_pagamento.id_for_label }}" class="block text-sm font-semibold text-slate-600">
-                    Tipo de pagamento
-                </label>
-                {{ pagamento_form.forma_pagamento }}
-                <button type="button" id="btn-finalizar" {% if itens|length == 0 %}disabled{% endif %}
-                        class="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-5 text-xl font-black text-white hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
-                    FINALIZAR COMPRA
-                </button>
-            </form>
         </div>
-    </section>
+
+        <!-- Resumo -->
+        <div class="border-t border-slate-100 px-5 pb-4 pt-3">
+            <div class="flex items-center justify-between text-sm text-slate-500">
+                <span>Subtotal</span>
+                <span class="font-semibold text-slate-700">R$ {{ venda.subtotal }}</span>
+            </div>
+            <div class="mt-1 flex items-center justify-between text-sm text-slate-500">
+                <span>Desconto</span>
+                <span class="font-semibold text-slate-700">R$ {{ venda.desconto }}</span>
+            </div>
+            <div class="my-3 h-px bg-slate-200"></div>
+            <div class="flex items-end justify-between">
+                <span class="text-sm font-bold uppercase tracking-wide text-slate-400">Total</span>
+                <span class="text-3xl font-extrabold text-slate-900">R$ {{ venda.total }}</span>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" id="btn-desconto"
+                        class="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">
+                    {% include "partials/icon.html" with name="percent" class="h-4 w-4" %}
+                    Desconto <span class="text-xs font-medium text-slate-400">(F3)</span>
+                </button>
+                <button type="button" id="btn-cliente"
+                        class="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">
+                    {% include "partials/icon.html" with name="user" class="h-4 w-4" %}
+                    Cliente <span class="text-xs font-medium text-slate-400">(F4)</span>
+                </button>
+            </div>
+            <button type="button" id="btn-receber" {% if itens|length == 0 %}disabled{% endif %}
+                    class="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-lg font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
+                {% include "partials/icon.html" with name="money" class="h-5 w-5" %}
+                Receber <span class="text-xs font-medium text-emerald-100">(F5)</span>
+            </button>
+        </div>
+    </aside>
 </div>
 
-<!-- Janela de espera: confirmação do pagamento na maquininha -->
-<div id="modal-finalizar" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <div class="bg-white rounded-2xl p-6 max-w-md w-full text-center shadow-xl">
-        <h2 class="text-xl font-bold text-slate-900">Finalizar compra</h2>
-        <p class="mt-3 text-slate-600">Total: <strong id="modal-total" class="text-slate-900"></strong></p>
-        <p class="text-slate-600">Pagamento: <strong id="modal-forma" class="text-slate-900"></strong></p>
-        <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-4">
+<!-- Modal Desconto -->
+<div id="modal-desconto" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Aplicar desconto</h3>
+            <button type="button" data-fechar="modal-desconto" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                {% include "partials/icon.html" with name="x" class="h-5 w-5" %}
+            </button>
+        </div>
+        <p class="mt-1 text-sm text-slate-500">Informe o valor do desconto em reais (R$).</p>
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="desconto">
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Desconto (R$)</label>
+            <input name="desconto" type="number" step="0.01" min="0" max="{{ venda.subtotal }}" value="{{ venda.desconto }}"
+                   class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-lg font-semibold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <button type="submit" class="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-700">Aplicar desconto</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Cliente -->
+<div id="modal-cliente" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Identificar cliente</h3>
+            <button type="button" data-fechar="modal-cliente" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                {% include "partials/icon.html" with name="x" class="h-5 w-5" %}
+            </button>
+        </div>
+        <p class="mt-1 text-sm text-slate-500">Nome do cliente para a venda (opcional).</p>
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="cliente">
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</label>
+            <input name="cliente_nome" type="text" value="{{ venda.cliente_nome }}" placeholder="Ex.: Maria da Silva"
+                   class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <div class="mt-4 grid grid-cols-2 gap-2">
+                <button type="button" data-fechar="modal-cliente" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">Salvar cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Limpar venda -->
+<div id="modal-limpar" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Limpar venda</h3>
+            <button type="button" data-fechar="modal-limpar" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                {% include "partials/icon.html" with name="x" class="h-5 w-5" %}
+            </button>
+        </div>
+        <p class="mt-1 text-sm text-slate-500">Todos os itens serão descartados e a venda será cancelada. Esta ação exige justificativa.</p>
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="cancelar">
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Justificativa</label>
+            <input name="motivo" type="text" placeholder="Ex.: erro de lançamento"
+                   class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100">
+            <div class="mt-4 grid grid-cols-2 gap-2">
+                <button type="button" data-fechar="modal-limpar" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Voltar</button>
+                <button type="submit" class="flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700">
+                    {% include "partials/icon.html" with name="trash" class="h-4 w-4" %}
+                    Limpar venda
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Receber (pagamento) -->
+<div id="modal-receber" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Receber pagamento</h3>
+            <button type="button" data-fechar="modal-receber" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                {% include "partials/icon.html" with name="x" class="h-5 w-5" %}
+            </button>
+        </div>
+        <div class="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+            <span class="text-sm font-semibold text-slate-500">Total a receber</span>
+            <span class="text-2xl font-extrabold text-slate-900">R$ {{ venda.total }}</span>
+        </div>
+        <form method="post" id="form-finalizar" class="mt-4">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="finalizar">
+            <label for="{{ pagamento_form.forma_pagamento.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Forma de pagamento
+            </label>
+            {{ pagamento_form.forma_pagamento }}
+            <button type="button" id="btn-finalizar"
+                    class="mt-4 w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-lg font-bold text-white transition-colors hover:bg-emerald-700">
+                Finalizar compra
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Confirmação do pagamento na maquininha -->
+<div id="modal-confirmacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <h3 class="text-xl font-bold text-slate-900">Confirmar pagamento</h3>
+        <p class="mt-2 text-sm text-slate-600">Total: <strong id="modal-total" class="text-slate-900"></strong></p>
+        <p class="text-sm text-slate-600">Pagamento: <strong id="modal-forma" class="text-slate-900"></strong></p>
+        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
             <p class="font-semibold text-amber-700">Aguardando confirmação do pagamento na maquininha…</p>
             <p class="mt-1 text-sm text-amber-600">Finalize a compra somente após o pagamento ser confirmado no aparelho.</p>
         </div>
-        <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <button type="button" id="btn-aguardar-finalizar" class="rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50">
+        <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <button type="button" id="btn-aguardar-finalizar" class="rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
                 Continuar aguardando
             </button>
-            <button type="button" id="btn-confirmar-finalizar" class="rounded-lg bg-emerald-600 px-4 py-3 font-bold text-white hover:bg-emerald-700">
+            <button type="button" id="btn-confirmar-finalizar" class="rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white hover:bg-emerald-700">
                 Pagamento confirmado — Finalizar
             </button>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block shell_scripts %}
 <script>
 (function () {
-    var btnFinalizar = document.getElementById('btn-finalizar');
-    var modal = document.getElementById('modal-finalizar');
-    var selectForma = document.getElementById('{{ pagamento_form.forma_pagamento.id_for_label }}');
-    var formFinalizar = document.getElementById('form-finalizar');
+    function abrirModal(id) { document.getElementById(id).classList.remove("hidden"); }
+    function fecharModal(id) { document.getElementById(id).classList.add("hidden"); }
 
-    btnFinalizar.addEventListener('click', function () {
-        document.getElementById('modal-total').textContent = 'R$ {{ venda.total }}';
-        document.getElementById('modal-forma').textContent =
-            selectForma.options[selectForma.selectedIndex].text;
-        modal.classList.remove('hidden');
+    document.querySelectorAll("[data-fechar]").forEach(function (botao) {
+        botao.addEventListener("click", function () { fecharModal(botao.getAttribute("data-fechar")); });
+    });
+    document.querySelectorAll(".fixed.inset-0").forEach(function (modal) {
+        modal.addEventListener("click", function (evento) {
+            if (evento.target === modal) modal.classList.add("hidden");
+        });
     });
 
-    document.getElementById('btn-aguardar-finalizar').addEventListener('click', function () {
-        modal.classList.add('hidden');
+    document.getElementById("btn-desconto").addEventListener("click", function () { abrirModal("modal-desconto"); });
+    document.getElementById("btn-cliente").addEventListener("click", function () { abrirModal("modal-cliente"); });
+    document.getElementById("btn-limpar-venda").addEventListener("click", function () { abrirModal("modal-limpar"); });
+    document.getElementById("btn-receber").addEventListener("click", function () { abrirModal("modal-receber"); });
+
+    // Atalhos F3/F4/F5
+    document.addEventListener("keydown", function (evento) {
+        if (evento.key === "F3") { evento.preventDefault(); abrirModal("modal-desconto"); }
+        if (evento.key === "F4") { evento.preventDefault(); abrirModal("modal-cliente"); }
+        if (evento.key === "F5") {
+            evento.preventDefault();
+            var receber = document.getElementById("btn-receber");
+            if (receber && !receber.disabled) abrirModal("modal-receber");
+        }
     });
 
-    document.getElementById('btn-confirmar-finalizar').addEventListener('click', function () {
+    // Fluxo de finalização: confirmação em duas etapas.
+    var btnFinalizar = document.getElementById("btn-finalizar");
+    var selectForma = document.getElementById("{{ pagamento_form.forma_pagamento.id_for_label }}");
+    var formFinalizar = document.getElementById("form-finalizar");
+    btnFinalizar.addEventListener("click", function () {
+        document.getElementById("modal-total").textContent = "R$ {{ venda.total }}";
+        document.getElementById("modal-forma").textContent = selectForma.options[selectForma.selectedIndex].text;
+        fecharModal("modal-receber");
+        abrirModal("modal-confirmacao");
+    });
+    document.getElementById("btn-aguardar-finalizar").addEventListener("click", function () {
+        fecharModal("modal-confirmacao");
+        abrirModal("modal-receber");
+    });
+    document.getElementById("btn-confirmar-finalizar").addEventListener("click", function () {
         formFinalizar.submit();
     });
-})();
-</script>
 
-<script>
-(function () {
-    var campo = document.getElementById('codigo');
-    var lista = document.getElementById('resultados');
-    var timer = null;
+    // Busca do topo no PDV: Enter adiciona o primeiro resultado ao carrinho.
+    var formBusca = document.getElementById("form-busca-topo");
+    var campo = document.getElementById("busca-topo");
+    if (formBusca && campo) {
+        formBusca.addEventListener("submit", function (evento) {
+            evento.preventDefault();
+            buscarEAdicionar();
+        });
+        campo.addEventListener("keydown", function (evento) {
+            if (evento.key === "Enter") {
+                evento.preventDefault();
+                buscarEAdicionar();
+            }
+        });
+    }
 
     function adicionar(uuid) {
-        var form = document.createElement('form');
-        form.method = 'post';
-        form.action = window.location.href;
+        var form = document.createElement("form");
+        form.method = "post";
+        form.action = window.location.pathname + window.location.search;
         form.innerHTML = '{% csrf_token %}'
             + '<input type="hidden" name="acao" value="add_item">'
             + '<input type="hidden" name="produto" value="' + uuid + '">'
@@ -183,42 +383,15 @@
         form.submit();
     }
 
-    function buscar() {
+    function buscarEAdicionar() {
         var termo = campo.value.trim();
-        if (!termo) { lista.classList.add('hidden'); return; }
+        if (!termo) return;
         fetch('{% url "sales:produto_busca" %}?q=' + encodeURIComponent(termo))
             .then(function (r) { return r.json(); })
             .then(function (dados) {
-                lista.innerHTML = '';
-                dados.resultados.forEach(function (p) {
-                    var li = document.createElement('li');
-                    li.className = 'py-2 cursor-pointer hover:text-emerald-600';
-                    li.textContent = p.nome + ' · R$ ' + p.preco;
-                    li.addEventListener('click', function () { adicionar(p.uuid); });
-                    lista.appendChild(li);
-                });
-                lista.classList.toggle('hidden', dados.resultados.length === 0);
+                if (dados.resultados.length > 0) adicionar(dados.resultados[0].uuid);
             });
     }
-
-    campo.addEventListener('input', function () {
-        clearTimeout(timer);
-        timer = setTimeout(buscar, 250);
-    });
-
-    // Leitor USB HID: código completo + Enter → adiciona direto.
-    campo.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            fetch('{% url "sales:produto_busca" %}?q=' + encodeURIComponent(campo.value.trim()))
-                .then(function (r) { return r.json(); })
-                .then(function (dados) {
-                    if (dados.resultados.length > 0) {
-                        adicionar(dados.resultados[0].uuid);
-                    }
-                });
-        }
-    });
 })();
 </script>
 {% endblock %}
