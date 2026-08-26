@@ -121,9 +121,23 @@
         <div class="min-h-0 flex-1 overflow-y-auto px-5">
             {% for item in itens %}
                 <div class="flex items-center gap-3 border-b border-slate-100 py-3">
-                    <span class="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">
-                        {{ item.quantidade }}
-                    </span>
+                    <div class="flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="alterar_item">
+                            <input type="hidden" name="item" value="{{ item.uuid }}">
+                            <input type="hidden" name="quantidade" value="{{ item.quantidade_menos }}">
+                            <button type="submit" title="Diminuir quantidade" class="px-2 py-1.5 text-sm font-bold text-slate-400 transition-colors hover:text-slate-700">−</button>
+                        </form>
+                        <span class="min-w-[1.5rem] text-center text-sm font-bold text-slate-700">{{ item.quantidade|floatformat:'-3' }}</span>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="alterar_item">
+                            <input type="hidden" name="item" value="{{ item.uuid }}">
+                            <input type="hidden" name="quantidade" value="{{ item.quantidade_mais }}">
+                            <button type="submit" title="Aumentar quantidade" class="px-2 py-1.5 text-sm font-bold text-slate-400 transition-colors hover:text-slate-700">+</button>
+                        </form>
+                    </div>
                     <div class="min-w-0 flex-1">
                         <p class="truncate text-sm font-medium text-slate-800">{{ item.produto.nome }}</p>
                         <p class="text-xs text-slate-400">R$ {{ item.preco_unitario }} cada</p>
@@ -214,12 +228,31 @@
                 {% include "partials/icon.html" with name="x" class="h-5 w-5" %}
             </button>
         </div>
-        <p class="mt-1 text-sm text-slate-500">Nome do cliente para a venda (opcional).</p>
         <form method="post" class="mt-4">
             {% csrf_token %}
             <input type="hidden" name="acao" value="cliente">
-            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</label>
-            <input name="cliente_nome" type="text" value="{{ venda.cliente_nome }}" placeholder="Ex.: Maria da Silva"
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente cadastrado</label>
+            <div class="relative mt-1">
+                <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    {% include "partials/icon.html" with name="users" class="h-4 w-4" %}
+                </span>
+                <select name="cliente" id="select-cliente" class="w-full appearance-none rounded-xl border border-slate-300 py-3 pl-10 pr-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">— Sem cliente (venda normal) —</option>
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente.uuid }}" {% if venda.cliente_id == cliente.pk %}selected{% endif %}>{{ cliente.nome }}{% if cliente.cpf_cnpj %} · {{ cliente.cpf_cnpj }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+                <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                    {% include "partials/icon.html" with name="chevron-down" class="h-4 w-4" %}
+                </span>
+            </div>
+            <div class="my-4 flex items-center gap-3">
+                <span class="h-px flex-1 bg-slate-100"></span>
+                <span class="text-xs font-medium text-slate-400">ou informe o nome manualmente</span>
+                <span class="h-px flex-1 bg-slate-100"></span>
+            </div>
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Nome do cliente</label>
+            <input name="cliente_nome" id="input-cliente-nome" type="text" value="{{ venda.cliente_nome }}" placeholder="Ex.: Maria da Silva"
                    class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
             <div class="mt-4 grid grid-cols-2 gap-2">
                 <button type="button" data-fechar="modal-cliente" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
@@ -325,6 +358,18 @@
     document.getElementById("btn-cliente").addEventListener("click", function () { abrirModal("modal-cliente"); });
     document.getElementById("btn-limpar-venda").addEventListener("click", function () { abrirModal("modal-limpar"); });
     document.getElementById("btn-receber").addEventListener("click", function () { abrirModal("modal-receber"); });
+
+    // Cliente: seleção e nome manual são mutuamente exclusivos.
+    var selectCliente = document.getElementById("select-cliente");
+    var inputClienteNome = document.getElementById("input-cliente-nome");
+    if (selectCliente && inputClienteNome) {
+        selectCliente.addEventListener("change", function () {
+            if (selectCliente.value) inputClienteNome.value = "";
+        });
+        inputClienteNome.addEventListener("input", function () {
+            if (inputClienteNome.value) selectCliente.value = "";
+        });
+    }
 
     // Atalhos F3/F4/F5
     document.addEventListener("keydown", function (evento) {
