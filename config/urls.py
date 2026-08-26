@@ -10,5 +10,7 @@ urlpatterns = [
     path("app/financeiro/", include("apps.financial.urls")),
     path("app/impressao/", include("apps.printing.urls")),
     path("api/print-agent/", include("apps.printing.api_urls")),
+    path("api/print-agent/etiquetas/", include("apps.labels.api_urls")),
+    path("app/etiquetas/", include("apps.labels.urls")),
     path("", include("apps.sales.urls")),
 ]

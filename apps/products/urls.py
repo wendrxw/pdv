@@ -6,6 +6,7 @@ app_name = "products"
 
 urlpatterns = [
     path("", views.lista, name="lista"),
+    path("busca/", views.busca, name="busca"),
     path("novo/", views.novo, name="novo"),
     path("gerar-codigo-barras/", views.gerar_codigo_barras, name="gerar_codigo_barras"),
     path("<uuid:uuid>/", views.detalhe, name="detalhe"),

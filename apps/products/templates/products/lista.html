@@ -17,7 +17,8 @@
 </div>
 
 <form method="get" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-3">
-    <input type="text" name="q" value="{{ termo }}" placeholder="Buscar por nome ou SKU"
+    <input type="text" name="q" id="busca-produto" value="{{ termo }}"
+           placeholder="Buscar produto..." autocomplete="off"
            class="md:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
     <select name="categoria" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
         <option value="">Todas as categorias</option>
@@ -41,24 +42,43 @@
     </div>
 </form>
 
+<div class="flex items-center justify-between gap-4 mb-4">
+    <p id="resumo-selecao" class="text-sm text-slate-500">Nenhum produto selecionado.</p>
+    <form method="post" action="{% url 'labels:selecao' %}" id="form-preparar-impressao">
+        {% csrf_token %}
+        <button type="submit" id="botao-preparar-impressao" disabled
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Preparar impressão de etiquetas
+        </button>
+    </form>
+</div>
+
 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
     <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
+                <th class="px-4 py-3 w-10">
+                    <input type="checkbox" id="selecionar-todos" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                </th>
                 <th class="px-4 py-3">Produto</th>
+                <th class="px-4 py-3">Código de barras</th>
                 <th class="px-4 py-3">SKU</th>
                 <th class="px-4 py-3">Categoria</th>
                 <th class="px-4 py-3">Preço de venda</th>
                 <th class="px-4 py-3">Status</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody id="tabela-produtos" class="divide-y divide-slate-100">
             {% for produto in pagina %}
-                <tr class="hover:bg-slate-50">
+                <tr class="hover:bg-slate-50" data-uuid="{{ produto.uuid }}">
+                    <td class="px-4 py-3">
+                        <input type="checkbox" class="produto-check rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="{{ produto.uuid }}">
+                    </td>
                     <td class="px-4 py-3">
                         <a href="{% url 'products:detalhe' produto.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ produto.nome }}</a>
                         {% if not produto.ativo %}<span class="ml-2 text-xs text-red-600">(inativo)</span>{% endif %}
                     </td>
+                    <td class="px-4 py-3 text-slate-500">{{ produto.codigo_barras|default:"—" }}</td>
                     <td class="px-4 py-3 text-slate-500">{{ produto.sku|default:"—" }}</td>
                     <td class="px-4 py-3 text-slate-500">{{ produto.categoria|default:"—" }}</td>
                     <td class="px-4 py-3">R$ {{ produto.preco_venda }}</td>
@@ -71,8 +91,8 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr>
-                    <td colspan="5" class="px-4 py-10 text-center text-slate-400">
+                <tr id="linha-vazia">
+                    <td colspan="7" class="px-4 py-10 text-center text-slate-400">
                         Nenhum produto encontrado.
                     </td>
                 </tr>
@@ -82,7 +102,7 @@
 </div>
 
 {% if pagina.has_other_pages %}
-    <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
+    <nav id="paginacao" class="mt-4 flex items-center justify-between text-sm text-slate-600">
         {% if pagina.has_previous %}
             <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}&status={{ status }}" class="hover:text-indigo-600">&laquo; Anterior</a>
         {% else %}<span></span>{% endif %}
@@ -92,4 +112,129 @@
         {% else %}<span></span>{% endif %}
     </nav>
 {% endif %}
+
+<script>
+(function () {
+    var busca = document.getElementById("busca-produto");
+    var tbody = document.getElementById("tabela-produtos");
+    var selecionados = new Set();
+    var temporizador = null;
+    var linhasOriginais = Array.prototype.slice.call(tbody.querySelectorAll("tr[data-uuid]"));
+    var paginacao = document.getElementById("paginacao");
+    var resumoSelecao = document.getElementById("resumo-selecao");
+    var botaoPreparar = document.getElementById("botao-preparar-impressao");
+    var formPreparar = document.getElementById("form-preparar-impressao");
+
+    function atualizarResumo() {
+        if (!selecionados.size) {
+            resumoSelecao.textContent = "Nenhum produto selecionado.";
+            botaoPreparar.disabled = true;
+        } else {
+            resumoSelecao.textContent = selecionados.size + " produto(s) selecionado(s).";
+            botaoPreparar.disabled = false;
+        }
+    }
+
+    function linhaProduto(produto) {
+        var tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50";
+        tr.dataset.uuid = produto.uuid;
+        tr.innerHTML =
+            '<td class="px-4 py-3"><input type="checkbox" class="produto-check rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="' + produto.uuid + '"></td>' +
+            '<td class="px-4 py-3"><a href="/app/produtos/' + produto.uuid + '/" class="font-medium text-indigo-600 hover:text-indigo-800">' + produto.nome + '</a>' +
+            (produto.ativo ? "" : '<span class="ml-2 text-xs text-red-600">(inativo)</span>') + '</td>' +
+            '<td class="px-4 py-3 text-slate-500">' + (produto.codigo_barras || "—") + '</td>' +
+            '<td class="px-4 py-3 text-slate-500">' + (produto.sku || "—") + '</td>' +
+            '<td class="px-4 py-3 text-slate-500">' + (produto.categoria || "—") + '</td>' +
+            '<td class="px-4 py-3">R$ ' + produto.preco_venda + '</td>' +
+            '<td class="px-4 py-3">' + (produto.ativo
+                ? '<span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Ativo</span>'
+                : '<span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Inativo</span>') + '</td>';
+        var checkbox = tr.querySelector(".produto-check");
+        checkbox.checked = selecionados.has(produto.uuid);
+        return tr;
+    }
+
+    function renderizarResultados(resultados) {
+        tbody.innerHTML = "";
+        if (!resultados.length) {
+            var tr = document.createElement("tr");
+            tr.innerHTML = '<td colspan="7" class="px-4 py-10 text-center text-slate-400">Nenhum produto encontrado.</td>';
+            tbody.appendChild(tr);
+        } else {
+            resultados.forEach(function (produto) {
+                tbody.appendChild(linhaProduto(produto));
+            });
+        }
+        if (paginacao) paginacao.classList.add("hidden");
+        document.getElementById("selecionar-todos").checked =
+            resultados.length > 0 && resultados.every(function (p) { return selecionados.has(p.uuid); });
+    }
+
+    function restaurarListaOriginal() {
+        tbody.innerHTML = "";
+        linhasOriginais.forEach(function (linha) {
+            tbody.appendChild(linha);
+            linha.querySelector(".produto-check").checked = selecionados.has(linha.dataset.uuid);
+        });
+        if (paginacao) paginacao.classList.remove("hidden");
+        var todos = document.getElementById("selecionar-todos");
+        todos.checked = linhasOriginais.length > 0 && linhasOriginais.every(function (l) { return selecionados.has(l.dataset.uuid); });
+    }
+
+    busca.addEventListener("input", function () {
+        clearTimeout(temporizador);
+        var termo = busca.value.trim();
+        if (!termo) {
+            restaurarListaOriginal();
+            return;
+        }
+        temporizador = setTimeout(function () {
+            fetch("{% url 'products:busca' %}?q=" + encodeURIComponent(termo), {
+                headers: { "Accept": "application/json" }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (dados) { renderizarResultados(dados.resultados || []); })
+                .catch(function () {});
+        }, 250);
+    });
+
+    document.getElementById("selecionar-todos").addEventListener("change", function (evento) {
+        tbody.querySelectorAll(".produto-check").forEach(function (checkbox) {
+            checkbox.checked = evento.target.checked;
+            var uuid = checkbox.closest("tr").dataset.uuid;
+            if (evento.target.checked) selecionados.add(uuid);
+            else selecionados.delete(uuid);
+        });
+        atualizarResumo();
+    });
+
+    tbody.addEventListener("change", function (evento) {
+        if (!evento.target.classList.contains("produto-check")) return;
+        var uuid = evento.target.closest("tr").dataset.uuid;
+        if (evento.target.checked) selecionados.add(uuid);
+        else selecionados.delete(uuid);
+        var todos = document.getElementById("selecionar-todos");
+        todos.checked = tbody.querySelectorAll(".produto-check").length > 0 &&
+            Array.prototype.every.call(tbody.querySelectorAll(".produto-check"), function (c) { return c.checked; });
+        atualizarResumo();
+    });
+
+    formPreparar.addEventListener("submit", function (evento) {
+        if (!selecionados.size) {
+            evento.preventDefault();
+            return;
+        }
+        selecionados.forEach(function (uuid) {
+            var campo = document.createElement("input");
+            campo.type = "hidden";
+            campo.name = "uuid";
+            campo.value = uuid;
+            formPreparar.appendChild(campo);
+        });
+    });
+
+    atualizarResumo();
+})();
+</script>
 {% endblock %}
