@@ -1,0 +1,67 @@
+{% extends "pdv_shell.html" %}
+{% block shell_title %}{{ cliente.nome }}{% endblock %}
+
+{% block shell_content %}
+<div class="mx-auto max-w-3xl p-6">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">{{ cliente.nome }}</h1>
+            <nav class="mt-1 text-sm text-slate-400">
+                <a href="{% url 'customers:lista' %}" class="transition-colors hover:text-blue-600">Clientes</a>
+                <span class="mx-1">›</span>
+                <span class="text-slate-600">{{ cliente.nome }}</span>
+            </nav>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'customers:editar' cliente.uuid %}"
+               class="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
+                Editar
+            </a>
+            <form method="post" action="{% url 'customers:alternar_status' cliente.uuid %}">
+                {% csrf_token %}
+                {% if cliente.ativo %}
+                    <button type="submit" class="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">Desativar</button>
+                {% else %}
+                    <button type="submit" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-50">Reativar</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="mb-4 text-base font-bold text-slate-900">Informações</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">CPF/CNPJ</dt><dd class="font-medium text-slate-800">{{ cliente.cpf_cnpj|default:"—" }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">E-mail</dt><dd class="font-medium text-slate-800">{{ cliente.email|default:"—" }}</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Telefone</dt><dd class="font-medium text-slate-800">{{ cliente.telefone|default:"—" }}</dd></div>
+                <div class="flex justify-between gap-4">
+                    <dt class="text-slate-500">Status</dt>
+                    <dd>
+                        {% if cliente.ativo %}<span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Ativo</span>
+                        {% else %}<span class="rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">Inativo</span>{% endif %}
+                    </dd>
+                </div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Cadastro</dt><dd class="font-medium text-slate-800">{{ cliente.data_cadastro|date:"d/m/Y H:i" }}</dd></div>
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="mb-4 text-base font-bold text-slate-900">Endereço</h2>
+            <p class="text-sm text-slate-600">
+                {% if cliente.endereco %}{{ cliente.endereco }}{% if cliente.numero %}, {{ cliente.numero }}{% endif %}{% else %}—{% endif %}
+                {% if cliente.complemento %}<br>{{ cliente.complemento }}{% endif %}
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+                {% if cliente.bairro %}{{ cliente.bairro }} · {% endif %}
+                {% if cliente.cidade %}{{ cliente.cidade }}{% if cliente.estado %} — {{ cliente.estado }}{% endif %}{% endif %}
+                {% if cliente.cep %}<br>CEP {{ cliente.cep }}{% endif %}
+            </p>
+            {% if cliente.observacoes %}
+                <h3 class="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-400">Observações</h3>
+                <p class="mt-1 whitespace-pre-line text-sm text-slate-600">{{ cliente.observacoes }}</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -27,7 +27,7 @@
                 {% include "partials/icon.html" with name="box" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Produtos</span>
             </a>
-            <a href="#"
+            <a href="{% url 'customers:lista' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
                {% if sidebar_active == 'clientes' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="users" class="h-5 w-5 shrink-0" %}
@@ -39,7 +39,7 @@
                 {% include "partials/icon.html" with name="wallet" class="h-5 w-5 shrink-0" %}
                 <span class="sidebar-texto">Caixa</span>
             </a>
-            <a href="#"
+            <a href="{% url 'reports:indice' %}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
                {% if sidebar_active == 'relatorios' %}bg-blue-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
                 {% include "partials/icon.html" with name="chart" class="h-5 w-5 shrink-0" %}

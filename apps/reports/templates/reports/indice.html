@@ -1,0 +1,307 @@
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Relatórios{% endblock %}
+
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-slate-900">Relatórios</h1>
+        <p class="mt-0.5 text-sm text-slate-500">Vendas, estoque, caixa e financeiro do período {{ inicio|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }}.</p>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Início</label>
+                <input type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Fim</label>
+                <input type="date" name="fim" value="{{ fim|date:'Y-m-d' }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Produto</label>
+                <select name="produto" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option value="">Todos</option>
+                    {% for produto in produtos %}
+                        <option value="{{ produto.pk }}" {% if produto_id == produto.pk|stringformat:'s' %}selected{% endif %}>{{ produto.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Categoria</label>
+                <select name="categoria" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.pk }}" {% if categoria_id == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Operador</label>
+                <select name="operador" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option value="">Todos</option>
+                    {% for operador in operadores %}
+                        <option value="{{ operador.pk }}" {% if operador_id == operador.pk|stringformat:'s' %}selected{% endif %}>{{ operador.get_full_name|default:operador.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Caixa</label>
+                <select name="caixa" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option value="">Todos</option>
+                    {% for caixa in caixas %}
+                        <option value="{{ caixa.uuid }}" {% if caixa_uuid == caixa.uuid|stringformat:'s' %}selected{% endif %}>Caixa de {{ caixa.operador.get_full_name|default:caixa.operador.username }} — {{ caixa.data_abertura|date:"d/m/Y" }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Forma de pagamento</label>
+                <select name="forma_pagamento" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option value="">Todas</option>
+                    {% for forma in formas %}
+                        <option value="{{ forma.uuid }}" {% if forma_uuid == forma.uuid|stringformat:'s' %}selected{% endif %}>{{ forma.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="flex-1 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700">Aplicar filtros</button>
+                <a href="{% url 'reports:indice' %}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Limpar</a>
+            </div>
+        </div>
+    </form>
+
+    {% if uso_filtros %}
+        <p class="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">Relatórios filtrados — os números abaixo consideram apenas os filtros aplicados.</p>
+    {% endif %}
+
+    <!-- Vendas por período -->
+    <section class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+            <h2 class="text-base font-bold text-slate-900">Vendas por período</h2>
+            <div class="flex gap-6 text-sm">
+                <span class="text-slate-500">Total <strong class="text-emerald-600">R$ {{ total_periodo }}</strong></span>
+                <span class="text-slate-500">Vendas <strong class="text-slate-800">{{ quantidade_vendas }}</strong></span>
+                <span class="text-slate-500">Ticket médio <strong class="text-slate-800">R$ {{ ticket_medio }}</strong></span>
+            </div>
+        </div>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-5 py-3">Data</th>
+                    <th class="px-5 py-3 text-right">Recebimentos</th>
+                    <th class="px-5 py-3 text-right">Vendas</th>
+                    <th class="px-5 py-3 text-right">Ticket médio</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for dia in vendas_por_dia %}
+                    <tr class="transition-colors hover:bg-slate-50">
+                        <td class="px-5 py-3 font-medium text-slate-700">{{ dia.data_finalizacao__date|date:"d/m/Y" }}</td>
+                        <td class="px-5 py-3 text-right font-semibold text-emerald-600">R$ {{ dia.total }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">{{ dia.quantidade }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">R$ {{ dia.ticket_medio }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="px-5 py-8 text-center text-slate-400">Sem vendas no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <!-- Vendas por produto -->
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Vendas por produto</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Produto</th><th class="px-5 py-3 text-right">Quantidade</th><th class="px-5 py-3 text-right">Total</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for linha in vendas_por_produto %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ linha.produto__nome }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">{{ linha.quantidade|floatformat:'-3' }}</td>
+                            <td class="px-5 py-3 text-right font-semibold text-slate-800">R$ {{ linha.total }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="px-5 py-8 text-center text-slate-400">Sem dados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Vendas por categoria -->
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Vendas por categoria</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Categoria</th><th class="px-5 py-3 text-right">Total</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for linha in vendas_por_categoria %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ linha.produto__categoria__nome|default:"Sem categoria" }}</td>
+                            <td class="px-5 py-3 text-right font-semibold text-slate-800">R$ {{ linha.total }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="2" class="px-5 py-8 text-center text-slate-400">Sem dados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Vendas por operador -->
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Vendas por operador</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Operador</th><th class="px-5 py-3 text-right">Vendas</th><th class="px-5 py-3 text-right">Total</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for linha in vendas_por_operador %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ linha.operador__first_name|default:linha.operador__username }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">{{ linha.quantidade }}</td>
+                            <td class="px-5 py-3 text-right font-semibold text-slate-800">R$ {{ linha.total }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="px-5 py-8 text-center text-slate-400">Sem dados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Vendas por forma de pagamento -->
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Vendas por forma de pagamento</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Forma</th><th class="px-5 py-3 text-right">Transações</th><th class="px-5 py-3 text-right">Total</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for linha in vendas_por_forma %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ linha.forma_pagamento__nome }}</td>
+                            <td class="px-5 py-3 text-right text-slate-600">{{ linha.quantidade }}</td>
+                            <td class="px-5 py-3 text-right font-semibold text-slate-800">R$ {{ linha.total }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="px-5 py-8 text-center text-slate-400">Sem dados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Estoque -->
+    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Estoque atual</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Produto</th><th class="px-5 py-3 text-right">Quantidade</th><th class="px-5 py-3 text-right">Mínimo</th><th class="px-5 py-3 text-right">Máximo</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for saldo in saldos %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ saldo.produto.nome }}</td>
+                            <td class="px-5 py-3 text-right font-semibold {% if saldo.produto.estoque_minimo and saldo.quantidade <= saldo.produto.estoque_minimo %}text-amber-600{% else %}text-slate-800{% endif %}">{{ saldo.quantidade|floatformat:'-3' }}</td>
+                            <td class="px-5 py-3 text-right text-slate-500">{{ saldo.produto.estoque_minimo|floatformat:'-3' }}</td>
+                            <td class="px-5 py-3 text-right text-slate-500">{{ saldo.produto.estoque_maximo|floatformat:'-3'|default:"—" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="px-5 py-8 text-center text-slate-400">Sem produtos com estoque.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Produtos com estoque baixo</h2>
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Produto</th><th class="px-5 py-3 text-right">Estoque</th><th class="px-5 py-3 text-right">Mínimo</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for saldo in estoque_baixo %}
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-5 py-3 text-slate-700">{{ saldo.produto.nome }}</td>
+                            <td class="px-5 py-3 text-right font-semibold text-amber-600">{{ saldo.quantidade|floatformat:'-3' }}</td>
+                            <td class="px-5 py-3 text-right text-slate-500">{{ saldo.produto.estoque_minimo|floatformat:'-3' }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="px-5 py-8 text-center text-slate-400">Nenhum produto abaixo do estoque mínimo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Fechamentos de caixa -->
+    <section class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Fechamentos de caixa</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-5 py-3">Operador</th>
+                    <th class="px-5 py-3">Abertura</th>
+                    <th class="px-5 py-3">Fechamento</th>
+                    <th class="px-5 py-3 text-right">Saldo inicial</th>
+                    <th class="px-5 py-3 text-right">Esperado</th>
+                    <th class="px-5 py-3 text-right">Informado</th>
+                    <th class="px-5 py-3 text-right">Diferença</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for caixa in fechamentos %}
+                    <tr class="transition-colors hover:bg-slate-50">
+                        <td class="px-5 py-3 text-slate-700">{{ caixa.operador.get_full_name|default:caixa.operador.username }}</td>
+                        <td class="px-5 py-3 text-slate-500">{{ caixa.data_abertura|date:"d/m/Y H:i" }}</td>
+                        <td class="px-5 py-3 text-slate-500">{{ caixa.data_fechamento|date:"d/m/Y H:i" }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">R$ {{ caixa.saldo_inicial }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">R$ {{ caixa.saldo_final_esperado|default:"—" }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">R$ {{ caixa.saldo_final_informado|default:"—" }}</td>
+                        <td class="px-5 py-3 text-right font-semibold {% if caixa.diferenca %}text-amber-600{% else %}text-slate-800{% endif %}">R$ {{ caixa.diferenca|default:"0,00" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="px-5 py-8 text-center text-slate-400">Nenhum caixa fechado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Movimentações financeiras -->
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Movimentações financeiras</h2>
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="px-5 py-3">Data</th>
+                    <th class="px-5 py-3">Tipo</th>
+                    <th class="px-5 py-3">Descrição</th>
+                    <th class="px-5 py-3">Conta</th>
+                    <th class="px-5 py-3 text-right">Valor</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for mov in movimentacoes %}
+                    <tr class="transition-colors hover:bg-slate-50">
+                        <td class="px-5 py-3 text-slate-500">{{ mov.data|date:"d/m/Y" }}</td>
+                        <td class="px-5 py-3">
+                            <span class="rounded-md px-1.5 py-0.5 text-xs font-semibold {% if 'ENTRADA' in mov.tipo %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-700{% endif %}">{{ mov.get_tipo_display }}</span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-700">{{ mov.descricao }}</td>
+                        <td class="px-5 py-3 text-slate-500">{{ mov.conta_financeira.nome }}</td>
+                        <td class="px-5 py-3 text-right font-semibold {% if 'ENTRADA' in mov.tipo %}text-emerald-600{% else %}text-red-600{% endif %}">R$ {{ mov.valor }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="px-5 py-8 text-center text-slate-400">Sem movimentações no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}
