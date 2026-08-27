@@ -381,7 +381,7 @@ def autenticar_estacao(uuid_estacao: str, token: str):
     """Valida a credencial da estação (comparação bcrypt, tempo constante)."""
     try:
         estacao = EstacaoImpressao.objects.get(uuid=uuid_estacao)
-    except EstacaoImpressao.DoesNotExist, ValidationError, ValueError:
+    except (EstacaoImpressao.DoesNotExist, ValidationError, ValueError):
         return None
     if estacao.status != EstacaoImpressao.Status.ATIVA:
         return None
