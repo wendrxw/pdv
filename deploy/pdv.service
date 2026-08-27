@@ -22,7 +22,7 @@ ProtectSystem=full
 ProtectHome=true
 ReadWritePaths=/opt/pdv
 ExecStart=/opt/pdv/.venv/bin/gunicorn config.wsgi:application \
-    --bind 127.0.0.1:${PDV_PORT:-8001} \
+    --bind 127.0.0.1:${PDV_PORT} \
     --workers 3 \
     --threads 2 \
     --timeout 60 \
