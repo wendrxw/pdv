@@ -33,7 +33,7 @@ def carregar_credencial(config):
         dados = json.loads(config.caminho_credencial.read_text("utf-8"))
         if dados.get("estacao") and dados.get("token"):
             return dados
-    except OSError, ValueError, json.JSONDecodeError:
+    except (OSError, ValueError, json.JSONDecodeError):
         return None
     return None
 
@@ -59,7 +59,7 @@ def _carregar_processados(config):
         try:
             registro = json.loads(linha)
             processados[registro["uuid"]] = registro["resultado"]
-        except json.JSONDecodeError, KeyError, TypeError:
+        except (json.JSONDecodeError, KeyError, TypeError):
             continue
     return processados
 

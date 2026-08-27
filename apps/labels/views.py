@@ -35,7 +35,7 @@ def _corpo_json(request) -> dict:
     try:
         dados = json.loads(request.body or b"{}")
         return dados if isinstance(dados, dict) else {}
-    except json.JSONDecodeError, UnicodeDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return {}
 
 

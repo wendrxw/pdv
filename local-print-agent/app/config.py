@@ -15,7 +15,7 @@ def _env(key, default=None):
 def _env_int(key, default):
     try:
         return int(_env(key, str(default)))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return default
 
 

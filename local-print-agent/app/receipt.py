@@ -24,7 +24,7 @@ def largura_papel(largura_mm):
 def _decimal(valor, padrao="0.00"):
     try:
         return Decimal(str(valor))
-    except InvalidOperation, TypeError, ValueError:
+    except (InvalidOperation, TypeError, ValueError):
         return Decimal(padrao)
 
 
@@ -63,7 +63,7 @@ def formatar_data_iso(data_iso):
     """ISO 8601 → dd/mm/yyyy HH:MM (local do servidor)."""
     try:
         momento = datetime.fromisoformat(str(data_iso))
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return ""
     return momento.strftime("%d/%m/%Y %H:%M")
 
@@ -99,7 +99,7 @@ def _numero_venda(dados):
     numero = (dados.get("venda") or {}).get("numero")
     try:
         return f"#{int(numero):06d}"
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return f"#{numero}"
 
 
