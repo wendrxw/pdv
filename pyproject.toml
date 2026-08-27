@@ -3,26 +3,27 @@ name = "pdv"
 version = "0.1.0"
 description = "Sistema SaaS multi-tenant para gestão de PDV"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11,<3.12"
 dependencies = [
-    "django>=6.1",
-    "djangorestframework>=3.18.0",
-    "psycopg2-binary>=2.9.12",
-    "bcrypt>=5.0.0",
-    "cryptography>=50.0.0",
-    "signxml>=5.1.0",
-    "lxml>=6.1.2",
-    "requests>=2.34.2",
-    "gunicorn>=26.1.0",
+    "django>=5.2,<5.3",
+    "djangorestframework>=3.18,<4.0",
+    "psycopg2-binary>=2.9,<3.0",
+    "bcrypt==4.3.0",
+    "cryptography>=44,<50",
+    "signxml>=4.0,<5.0",
+    "lxml>=5.0,<6.0",
+    "requests>=2.32,<3.0",
+    "gunicorn>=23,<26",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.4",
+    "ruff",
 ]
 
 [tool.ruff]
 line-length = 88
+target-version = "py311"
 extend-exclude = ["**/migrations/*"]
 
 [tool.ruff.lint]
@@ -34,6 +35,6 @@ select = [
     "B",   # flake8-bugbear
     "DJ",  # flake8-django
 ]
-# RUF012 não se aplica a models/forms do Django (class attrs mutáveis são padrão)
+# RUF012 não se aplica a models/forms do Django
+# (class attrs mutáveis são padrão)
 ignore = ["RUF012"]
-

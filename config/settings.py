@@ -25,7 +25,7 @@ def env_bool(key, default="False"):
 def env_int(key, default):
     try:
         return int(env(key, default))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return int(default)
 
 
@@ -36,17 +36,9 @@ SECRET_KEY = env(
 
 DEBUG = env_bool("DJANGO_DEBUG", "True")
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in env("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
