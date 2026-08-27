@@ -372,6 +372,58 @@ def remover_item(venda, item, *, usuario=None):
     return venda
 
 
+def alterar_quantidade_item(venda, item, quantidade, *, usuario=None):
+    """Altera a quantidade de um item do carrinho.
+
+    A quantidade deve ser maior que zero e o subtotal é recalculado a
+    partir do preço congelado no item. Nunca confiar no total enviado
+    pelo frontend.
+    """
+    if item.venda_id != venda.pk:
+        raise SalesError("Item não pertence à venda informada.")
+    quantidade = Decimal(quantidade)
+    if quantidade <= 0:
+        raise SalesError("Quantidade deve ser maior que zero.")
+    with transaction.atomic():
+        venda = Venda.objects.select_for_update().get(pk=venda.pk)
+        _venda_aberta(venda)
+        item = ItemVenda.objects.select_for_update().get(pk=item.pk)
+        item.quantidade = quantidade
+        item.subtotal = (item.preco_unitario * quantidade).quantize(
+            Decimal("0.01")
+        )
+        item.save(update_fields=["quantidade", "subtotal"])
+        _recalcular_totais(venda)
+    return item
+
+
+def associar_cliente(venda, cliente, *, usuario=None):
+    """Associa um cliente cadastrado à venda e congela o nome."""
+    if cliente is None:
+        raise SalesError("Cliente inválido.")
+    if cliente.tenant_id != venda.tenant_id:
+        raise SalesError("Cliente pertence a outro tenant.")
+    with transaction.atomic():
+        venda = Venda.objects.select_for_update().get(pk=venda.pk)
+        _venda_aberta(venda)
+        venda.cliente = cliente
+        venda.cliente_nome = cliente.nome
+        venda.save(update_fields=["cliente", "cliente_nome"])
+    return venda
+
+
+def definir_cliente_nome(venda, nome, *, usuario=None):
+    """Define apenas o nome do cliente (cadastro rápido, sem vínculo)."""
+    nome = (nome or "").strip()[:200]
+    with transaction.atomic():
+        venda = Venda.objects.select_for_update().get(pk=venda.pk)
+        _venda_aberta(venda)
+        venda.cliente = None
+        venda.cliente_nome = nome
+        venda.save(update_fields=["cliente", "cliente_nome"])
+    return venda
+
+
 def aplicar_desconto(venda, desconto, *, usuario=None):
     """Desconto validado no backend: 0 ≤ desconto ≤ subtotal."""
     desconto = Decimal(desconto)
@@ -573,8 +625,11 @@ __all__ = [
     "abrir_venda",
     "adicionar_item",
     "adicionar_pagamento",
+    "alterar_quantidade_item",
     "aplicar_desconto",
+    "associar_cliente",
     "cancelar_venda",
+    "definir_cliente_nome",
     "fechar_caixa",
     "finalizar_venda",
     "remover_item",

@@ -161,6 +161,92 @@ class VendaTelaViewTest(ViewsBaseTestCase):
         self.venda.refresh_from_db()
         self.assertEqual(self.venda.desconto, Decimal("4.00"))
 
+    def test_post_cliente_define_nome(self):
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente_nome": "Maria da Silva"},
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.cliente_nome, "Maria da Silva")
+
+    def test_post_cliente_com_uuid_associa_cadastrado(self):
+        from apps.customers.models import Cliente
+
+        cliente = Cliente.objects.create(
+            tenant=self.tenant, nome="Maria Cadastrada", cpf_cnpj="12345678900"
+        )
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente": str(cliente.uuid)},
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.cliente, cliente)
+        self.assertEqual(self.venda.cliente_nome, "Maria Cadastrada")
+
+    def test_post_cliente_alheio_falha(self):
+        from apps.companies.models import Tenant
+        from apps.customers.models import Cliente
+
+        alheio = Cliente.objects.create(
+            tenant=Tenant.objects.create(nome="Alheia"), nome="Invasor"
+        )
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente": str(alheio.uuid)},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.venda.refresh_from_db()
+        self.assertIsNone(self.venda.cliente)
+
+    def test_post_alterar_item_recalcula_total(self):
+        item = self.venda.itens.get()
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "alterar_item", "item": str(item.uuid), "quantidade": "5"},
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.venda.refresh_from_db()
+        item.refresh_from_db()
+        self.assertEqual(item.quantidade, Decimal("5.000"))
+        self.assertEqual(self.venda.total, Decimal("60.00"))
+
+    def test_post_alterar_item_quantidade_zero_falha(self):
+        item = self.venda.itens.get()
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "alterar_item", "item": str(item.uuid), "quantidade": "0"},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.total, Decimal("24.00"))
+
+    def test_post_cliente_em_venda_finalizada_falha(self):
+        from ..services import finalizar_venda
+
+        finalizar_venda(
+            self.venda, usuario=self.user, forma_pagamento=self.dinheiro
+        )
+        resposta = self.client.post(
+            reverse("sales:venda_tela", args=[self.venda.uuid]),
+            {"acao": "cliente", "cliente_nome": "Tarde demais"},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.cliente_nome, "")
+
+    def test_get_exibe_catalogo_de_produtos(self):
+        resposta = self.client.get(
+            reverse("sales:venda_tela", args=[self.venda.uuid])
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Venda atual")
+        self.assertContains(resposta, "Estoque:")
+
     def test_post_finaliza_venda(self):
         resposta = self.client.post(
             reverse("sales:venda_tela", args=[self.venda.uuid]),

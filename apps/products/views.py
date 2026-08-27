@@ -71,7 +71,7 @@ def novo(request):
         return redirect("dashboard")
 
     if request.method == "POST":
-        form = ProdutoForm(request.POST, tenant=tenant)
+        form = ProdutoForm(request.POST, request.FILES, tenant=tenant)
         if form.is_valid():
             try:
                 produto = criar_produto(
@@ -107,21 +107,30 @@ def editar(request, uuid):
     produto = get_object_or_404(Produto, tenant=tenant, uuid=uuid)
 
     if request.method == "POST":
-        form = ProdutoForm(request.POST, instance=produto, tenant=tenant)
+        form = ProdutoForm(
+            request.POST, request.FILES, instance=produto, tenant=tenant
+        )
         if form.is_valid():
             try:
-                alterar_produto(produto, usuario=request.user, **form.cleaned_data)
+                dados = form.cleaned_data.copy()
+                if not dados.get("imagem"):
+                    dados.pop("imagem", None)
+                alterar_produto(produto, usuario=request.user, **dados)
                 messages.success(request, f"Produto {produto.nome} atualizado.")
                 return redirect("products:detalhe", uuid=produto.uuid)
             except ProductServiceError as exc:
                 messages.error(request, str(exc))
     else:
         form = ProdutoForm(instance=produto, tenant=tenant)
-    return render(
-        request,
-        "products/formulario.html",
-        {"form": form, "produto": produto, "titulo": f"Editar {produto.nome}"},
-    )
+
+    contexto = {"form": form, "produto": produto, "titulo": f"Editar {produto.nome}"}
+    try:
+        from apps.inventory.services import obter_ou_criar_estoque
+
+        contexto["estoque_atual"] = obter_ou_criar_estoque(produto).quantidade
+    except Exception:
+        contexto["estoque_atual"] = None
+    return render(request, "products/formulario.html", contexto)
 
 
 @login_required

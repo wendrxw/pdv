@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% block shell_title %}PDV{% endblock %} — PDV{% endblock %}
+
+{% block content %}
+<div class="flex h-screen w-full overflow-hidden bg-[#F8FAFC] font-sans text-slate-800">
+
+    <!-- Barra lateral -->
+    <aside id="sidebar" class="flex w-60 shrink-0 flex-col bg-[#001B3D] text-white transition-all duration-200">
+        <div class="flex items-center gap-3 px-5 pb-6 pt-6">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white">
+                {% include "partials/icon.html" with name="logo" class="h-5 w-5" %}
+            </span>
+            <span id="sidebar-logo-texto" class="text-2xl font-extrabold tracking-tight">PDV</span>
+        </div>
+
+        <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+            <a href="{% url 'dashboard' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'dashboard' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="home" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Dashboard</span>
+            </a>
+            <a href="{% url 'sales:pdv' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'venda' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="cart" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Venda</span>
+            </a>
+            <a href="{% url 'products:lista' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'produtos' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="box" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Produtos</span>
+            </a>
+            <a href="{% url 'customers:lista' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'clientes' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="users" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Clientes</span>
+            </a>
+            <a href="{% url 'sales:caixas' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'caixa' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="wallet" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Caixa</span>
+            </a>
+            <a href="{% url 'financial:analise' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'financeiro' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="coins" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Financeiro</span>
+            </a>
+            <a href="{% url 'reports:indice' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'relatorios' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="chart" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Relatórios</span>
+            </a>
+            <a href="{% url 'printing:config' %}"
+               class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+               {% if sidebar_active == 'configuracoes' %}bg-brand-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-white/5 hover:text-white{% endif %}">
+                {% include "partials/icon.html" with name="settings" class="h-5 w-5 shrink-0" %}
+                <span class="sidebar-texto">Configurações</span>
+            </a>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-red-400">
+                    {% include "partials/icon.html" with name="logout" class="h-5 w-5 shrink-0" %}
+                    <span class="sidebar-texto">Sair</span>
+                </button>
+            </form>
+        </nav>
+
+        <div class="border-t border-white/10 px-5 py-4">
+            <div class="flex items-center justify-between">
+                <span id="sidebar-versao" class="text-xs font-medium text-slate-400">Versão 1.0.0</span>
+                <button type="button" id="botao-recolher-sidebar" class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white" title="Recolher menu">
+                    {% include "partials/icon.html" with name="chevron-left" class="h-4 w-4" %}
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Área principal -->
+    <div class="flex min-w-0 flex-1 flex-col">
+
+        <!-- Barra superior -->
+        <header class="flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 sm:px-6">
+            <button type="button" id="botao-menu" class="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100" title="Menu">
+                {% include "partials/icon.html" with name="menu" class="h-5 w-5" %}
+            </button>
+
+            <form method="get" action="{% url 'products:lista' %}" class="relative flex-1 max-w-xl" id="form-busca-topo">
+                <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    {% include "partials/icon.html" with name="search" class="h-4 w-4" %}
+                </span>
+                <input id="busca-topo" name="q" type="text" autocomplete="off"
+                       placeholder="{% block busca_placeholder %}Buscar produto, cliente, venda...{% endblock %}"
+                       class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-16 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100">
+                <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-400">F2</span>
+            </form>
+
+            <div class="ml-auto flex items-center gap-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-white">
+                        {{ user.get_full_name|default:user.username|slice:":1"|upper }}
+                    </span>
+                    <div class="hidden leading-tight sm:block">
+                        <p class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</p>
+                        <p class="text-xs text-slate-400">{% block caixa_atual %}Caixa 01{% endblock %}</p>
+                    </div>
+                </div>
+
+                <div class="hidden items-center gap-1 text-slate-400 md:flex">
+                    <button type="button" title="Bloquear" class="rounded-lg p-2 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                        {% include "partials/icon.html" with name="lock" class="h-4 w-4" %}
+                    </button>
+                    <button type="button" title="Minimizar" class="rounded-lg p-2 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                        {% include "partials/icon.html" with name="minimize" class="h-4 w-4" %}
+                    </button>
+                    <button type="button" title="Maximizar" class="rounded-lg p-2 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                        {% include "partials/icon.html" with name="maximize" class="h-4 w-4" %}
+                    </button>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" title="Fechar" class="rounded-lg p-2 transition-colors hover:bg-red-50 hover:text-red-600">
+                            {% include "partials/icon.html" with name="close" class="h-4 w-4" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <!-- Notificações -->
+        {% if messages %}
+        <div id="toasts" class="pointer-events-none fixed right-4 top-20 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2">
+            {% for message in messages %}
+                <div class="toast pointer-events-auto rounded-xl border px-4 py-3 text-sm font-medium shadow-lg
+                    {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800
+                    {% elif message.tags == 'error' %}border-red-200 bg-red-50 text-red-800
+                    {% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-800
+                    {% else %}border-blue-200 bg-blue-50 text-blue-800{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Conteúdo -->
+        <main class="flex-1 overflow-y-auto">
+            {% block shell_content %}{% endblock %}
+        </main>
+
+        <!-- Rodapé -->
+        <footer class="flex h-10 shrink-0 items-center justify-end gap-6 border-t border-slate-200 bg-white px-6 text-xs text-slate-500">
+            <span class="flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                    <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+                    <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                <span class="font-semibold text-slate-600">NFC-e</span>
+                <span class="text-emerald-600">Conectado</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+                {% include "partials/icon.html" with name="clock" class="h-3.5 w-3.5" %}
+                <span id="relogio-hora" class="font-semibold text-slate-600">--:--</span>
+                <span id="relogio-data" class="text-slate-400">--/--/----</span>
+            </span>
+        </footer>
+    </div>
+</div>
+
+<script>
+(function () {
+    var sidebar = document.getElementById("sidebar");
+    var botaoMenu = document.getElementById("botao-menu");
+    var botaoRecolher = document.getElementById("botao-recolher-sidebar");
+    var recolhida = false;
+
+    function alternarSidebar() {
+        recolhida = !recolhida;
+        sidebar.classList.toggle("w-16", recolhida);
+        sidebar.classList.toggle("w-60", !recolhida);
+        document.querySelectorAll(".sidebar-texto").forEach(function (el) {
+            el.classList.toggle("hidden", recolhida);
+        });
+        document.getElementById("sidebar-versao").classList.toggle("hidden", recolhida);
+        document.getElementById("sidebar-logo-texto").classList.toggle("hidden", recolhida);
+        if (botaoRecolher) {
+            botaoRecolher.querySelector("svg").style.transform = recolhida ? "rotate(180deg)" : "";
+        }
+    }
+    if (botaoMenu) botaoMenu.addEventListener("click", alternarSidebar);
+    if (botaoRecolher) botaoRecolher.addEventListener("click", alternarSidebar);
+
+    // Atalho F2: foca a busca do topo.
+    document.addEventListener("keydown", function (evento) {
+        if (evento.key === "F2") {
+            evento.preventDefault();
+            var busca = document.getElementById("busca-topo");
+            if (busca) busca.focus();
+        }
+    });
+
+    // Relógio do rodapé.
+    function atualizarRelogio() {
+        var agora = new Date();
+        var hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
+        var data = String(agora.getDate()).padStart(2, "0") + "/" + String(agora.getMonth() + 1).padStart(2, "0") + "/" + agora.getFullYear();
+        var elHora = document.getElementById("relogio-hora");
+        var elData = document.getElementById("relogio-data");
+        if (elHora) elHora.textContent = hora;
+        if (elData) elData.textContent = data;
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+
+    // Toasts somem sozinhos.
+    document.querySelectorAll(".toast").forEach(function (toast) {
+        setTimeout(function () {
+            toast.style.transition = "opacity .4s";
+            toast.style.opacity = "0";
+            setTimeout(function () { toast.remove(); }, 400);
+        }, 4000);
+    });
+})();
+</script>
+{% block shell_scripts %}{% endblock %}
+{% endblock %}

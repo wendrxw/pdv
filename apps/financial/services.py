@@ -9,9 +9,11 @@ Regras de ouro (docs/general.md §67):
 """
 
 from calendar import monthrange
+from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from .models import (
@@ -820,3 +822,243 @@ def _por_categoria(tenant, inicio, fim, tipo_lancamento, modo):
         }
         for linha in linhas
     ]
+
+
+# ---------------------------------------------------------------------------
+# Controle Financeiro (dashboard de recebimentos do PDV)
+# ---------------------------------------------------------------------------
+
+
+def _validar_filtro_tenant(tenant, obj, rotulo):
+    if obj is not None and obj.tenant_id != tenant.id:
+        raise FinancialError(f"{rotulo} não pertence ao tenant.")
+
+
+def _vendas_do_periodo(tenant, inicio, fim, status):
+    """Base de vendas do período.
+
+    FINALIZADA usa a data de finalização; CANCELADA usa a abertura (a
+    finalização não existe); TODAS combina os dois critérios.
+    """
+    from apps.sales.models import Venda
+
+    vendas = Venda.objects.for_tenant(tenant)
+    if status == Venda.Status.FINALIZADA:
+        return vendas.filter(
+            status=Venda.Status.FINALIZADA,
+            data_finalizacao__date__range=(inicio, fim),
+        )
+    if status == Venda.Status.CANCELADA:
+        return vendas.filter(
+            status=Venda.Status.CANCELADA,
+            data_abertura__date__range=(inicio, fim),
+        )
+    return vendas.filter(
+        Q(status=Venda.Status.FINALIZADA, data_finalizacao__date__range=(inicio, fim))
+        | Q(status=Venda.Status.CANCELADA, data_abertura__date__range=(inicio, fim))
+    )
+
+
+def _aplicar_filtros(
+    base, *, forma_pagamento=None, categoria=None, operador=None, caixa=None
+):
+    if forma_pagamento is not None:
+        base = base.filter(pagamentos__forma_pagamento=forma_pagamento)
+    if categoria is not None:
+        base = base.filter(itens__produto__categoria=categoria)
+    if operador is not None:
+        base = base.filter(operador=operador)
+    if caixa is not None:
+        base = base.filter(caixa=caixa)
+    return base.distinct()
+
+
+def _soma_total(base):
+    return base.aggregate(total=models_sum("total"))["total"] or ZERO
+
+
+def _variacao(atual, anterior):
+    if anterior is None or anterior <= ZERO:
+        return None
+    return ((atual - anterior) / anterior * Decimal("100")).quantize(
+        CENTAVO, rounding=ROUND_HALF_UP
+    )
+
+
+def _datas_indicadores(hoje):
+    inicio_semana = hoje - timedelta(days=hoje.weekday())
+    primeiro_mes = hoje.replace(day=1)
+    primeiro_mes_anterior = (primeiro_mes - timedelta(days=1)).replace(day=1)
+    ultimo_mes_anterior = primeiro_mes - timedelta(days=1)
+    return {
+        "hoje": (hoje, hoje),
+        "ontem": (hoje - timedelta(days=1), hoje - timedelta(days=1)),
+        "semana": (inicio_semana, hoje),
+        "semana_anterior": (
+            inicio_semana - timedelta(days=7),
+            inicio_semana - timedelta(days=1),
+        ),
+        "mes": (primeiro_mes, hoje),
+        "mes_anterior": (primeiro_mes_anterior, ultimo_mes_anterior),
+    }
+
+
+def resumo_controle(
+    tenant,
+    *,
+    inicio,
+    fim,
+    forma_pagamento=None,
+    categoria=None,
+    operador=None,
+    caixa=None,
+    status="FINALIZADA",
+):
+    """Indicadores do Controle Financeiro, baseados nas vendas do PDV.
+
+    Recebimentos = soma dos totais das vendas finalizadas no período.
+    Tudo é isolado por tenant e os filtros são validados contra o tenant.
+    """
+    from apps.sales.models import ItemVenda, PagamentoVenda, Venda
+
+    if inicio > fim:
+        raise FinancialError("Data inicial posterior à final.")
+    if status not in (Venda.Status.FINALIZADA, Venda.Status.CANCELADA, "TODAS"):
+        raise FinancialError(f"Status desconhecido: {status}")
+    _validar_filtro_tenant(tenant, forma_pagamento, "Forma de pagamento")
+    _validar_filtro_tenant(tenant, categoria, "Categoria")
+    _validar_filtro_tenant(tenant, caixa, "Caixa")
+    if operador is not None and operador.tenant_id != tenant.id:
+        raise FinancialError("Operador não pertence ao tenant.")
+
+    filtros = {
+        "forma_pagamento": forma_pagamento,
+        "categoria": categoria,
+        "operador": operador,
+        "caixa": caixa,
+    }
+    base = _aplicar_filtros(
+        _vendas_do_periodo(tenant, inicio, fim, status), **filtros
+    )
+    finalizadas = _aplicar_filtros(
+        _vendas_do_periodo(tenant, inicio, fim, Venda.Status.FINALIZADA),
+        **filtros,
+    )
+
+    hoje = timezone.localdate()
+    periodos = _datas_indicadores(hoje)
+    totais = {}
+    for chave, (data_inicio, data_fim) in periodos.items():
+        totais[chave] = _soma_total(
+            _aplicar_filtros(
+                _vendas_do_periodo(
+                    tenant, data_inicio, data_fim, Venda.Status.FINALIZADA
+                ),
+                **filtros,
+            )
+        )
+
+    # Série diária para o gráfico (apenas vendas finalizadas).
+    serie = []
+    dia = inicio
+    por_dia = {
+        linha["data_finalizacao__date"]: linha["total"]
+        for linha in finalizadas.values("data_finalizacao__date").annotate(
+            total=models_sum("total")
+        )
+    }
+    while dia <= fim:
+        serie.append({"data": dia, "total": por_dia.get(dia, ZERO)})
+        dia += timedelta(days=1)
+
+    # Recebimentos por forma de pagamento.
+    pagamentos = PagamentoVenda.objects.for_tenant(tenant).filter(
+        venda__in=finalizadas
+    )
+    if forma_pagamento is not None:
+        pagamentos = pagamentos.filter(forma_pagamento=forma_pagamento)
+    linhas_forma = (
+        pagamentos.values("forma_pagamento__nome")
+        .annotate(total=models_sum("valor"))
+        .order_by("-total")
+    )
+    total_formas = sum((linha["total"] for linha in linhas_forma), ZERO)
+    por_forma = [
+        {
+            "nome": linha["forma_pagamento__nome"] or "Outros",
+            "total": linha["total"],
+            "pct": (
+                (linha["total"] / total_formas * Decimal("100")).quantize(
+                    CENTAVO, rounding=ROUND_HALF_UP
+                )
+                if total_formas > ZERO
+                else ZERO
+            ),
+        }
+        for linha in linhas_forma
+    ]
+
+    # Resumo por dia (vendas finalizadas).
+    linhas_dia = (
+        finalizadas.values("data_finalizacao__date")
+        .annotate(total=models_sum("total"), quantidade=Count("id"))
+        .order_by("data_finalizacao__date")
+    )
+    resumo_dia = [
+        {
+            "data": linha["data_finalizacao__date"],
+            "recebimentos": linha["total"],
+            "vendas": linha["quantidade"],
+            "ticket_medio": (
+                linha["total"] / linha["quantidade"]
+                if linha["quantidade"]
+                else ZERO
+            ),
+            "transacoes": linha["quantidade"],
+        }
+        for linha in linhas_dia
+    ]
+
+    # Resumo por categoria de produto.
+    itens = ItemVenda.objects.for_tenant(tenant).filter(venda__in=finalizadas)
+    if categoria is not None:
+        itens = itens.filter(produto__categoria=categoria)
+    linhas_categoria = (
+        itens.values("produto__categoria__nome")
+        .annotate(total=models_sum("subtotal"))
+        .order_by("-total")
+    )
+    total_categorias = sum((linha["total"] for linha in linhas_categoria), ZERO)
+    por_categoria = [
+        {
+            "nome": linha["produto__categoria__nome"] or "Sem categoria",
+            "total": linha["total"],
+            "pct": (
+                (linha["total"] / total_categorias * Decimal("100")).quantize(
+                    CENTAVO, rounding=ROUND_HALF_UP
+                )
+                if total_categorias > ZERO
+                else ZERO
+            ),
+        }
+        for linha in linhas_categoria
+    ]
+
+    return {
+        "total_periodo": _soma_total(base),
+        "recebido_hoje": totais["hoje"],
+        "recebido_ontem": totais["ontem"],
+        "pct_hoje": _variacao(totais["hoje"], totais["ontem"]),
+        "recebido_semana": totais["semana"],
+        "recebido_semana_anterior": totais["semana_anterior"],
+        "pct_semana": _variacao(totais["semana"], totais["semana_anterior"]),
+        "recebido_mes": totais["mes"],
+        "recebido_mes_anterior": totais["mes_anterior"],
+        "pct_mes": _variacao(totais["mes"], totais["mes_anterior"]),
+        "serie": serie,
+        "por_forma": por_forma,
+        "total_formas": total_formas,
+        "resumo_dia": resumo_dia,
+        "por_categoria": por_categoria,
+        "total_categorias": total_categorias,
+    }

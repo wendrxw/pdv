@@ -431,6 +431,144 @@ class IsolamentoMultiTenantTest(TestCase):
             receber_parcela(parcela, conta_financeira=self.conta_a)
 
 
+class ResumoControleTest(TestCase):
+    """Indicadores do Controle Financeiro a partir das vendas do PDV."""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            nome="Loja Controle", status=Tenant.Status.ATIVO
+        )
+        self.usuario = User.objects.create_user(
+            username="caixista", password="senha-12345", tenant=self.tenant
+        )
+        self.conta = criar_conta(
+            self.tenant, nome="Gaveta", tipo=ContaFinanceira.Tipo.CAIXA,
+            saldo_inicial=Decimal("100.00"),
+        )
+        self.dinheiro = criar_forma_pagamento(
+            self.tenant, nome="Dinheiro", codigo="DINHEIRO"
+        )
+        self.pix = criar_forma_pagamento(self.tenant, nome="PIX", codigo="PIX")
+        from apps.products.models import Produto
+        from apps.sales.services import (
+            abrir_caixa,
+            abrir_venda,
+            adicionar_item,
+            finalizar_venda,
+        )
+
+        self.Produto = Produto
+        self.abrir_caixa = abrir_caixa
+        self.abrir_venda = abrir_venda
+        self.adicionar_item = adicionar_item
+        self.finalizar_venda = finalizar_venda
+        self.produto = Produto.objects.create(
+            tenant=self.tenant,
+            nome="Refrigerante",
+            preco_venda=Decimal("10.00"),
+        )
+        self.caixa = abrir_caixa(
+            self.tenant, operador=self.usuario, conta_financeira=self.conta
+        )
+
+    def _vender(self, forma=None):
+        venda = self.abrir_venda(self.caixa)
+        self.adicionar_item(
+            venda, self.produto, Decimal("1"), usuario=self.usuario
+        )
+        self.finalizar_venda(
+            venda, usuario=self.usuario, forma_pagamento=forma or self.dinheiro
+        )
+        return venda
+
+    def _resumo(self, **kwargs):
+        from ..services import resumo_controle
+
+        hoje = timezone.localdate()
+        padrao = {"inicio": hoje, "fim": hoje}
+        padrao.update(kwargs)
+        return resumo_controle(self.tenant, **padrao)
+
+    def test_recebido_hoje_soma_vendas_finalizadas(self):
+        self._vender()
+        self._vender()
+        resumo = self._resumo()
+        self.assertEqual(resumo["recebido_hoje"], Decimal("20.00"))
+        self.assertEqual(resumo["total_periodo"], Decimal("20.00"))
+
+    def test_venda_cancelada_nao_entra_nos_recebimentos(self):
+        from apps.sales.services import cancelar_venda
+
+        venda = self._vender()
+        cancelar_venda(venda, motivo="Teste", usuario=self.usuario)
+        resumo = self._resumo()
+        self.assertEqual(resumo["recebido_hoje"], ZERO)
+
+    def test_isolamento_por_tenant(self):
+        outro = Tenant.objects.create(nome="Outra Controle")
+        outro_usuario = User.objects.create_user(
+            username="outro-caixista", password="senha-12345", tenant=outro
+        )
+        outro_conta = criar_conta(
+            outro, nome="Gaveta alheia", tipo=ContaFinanceira.Tipo.CAIXA
+        )
+        outro_dinheiro = criar_forma_pagamento(
+            outro, nome="Dinheiro alheio", codigo="DINHEIRO"
+        )
+        outro_produto = self.Produto.objects.create(
+            tenant=outro, nome="Produto alheio", preco_venda=Decimal("99.00")
+        )
+        outro_caixa = self.abrir_caixa(
+            outro, operador=outro_usuario, conta_financeira=outro_conta
+        )
+        venda = self.abrir_venda(outro_caixa)
+        self.adicionar_item(
+            venda, outro_produto, Decimal("1"), usuario=outro_usuario
+        )
+        self.finalizar_venda(
+            venda, usuario=outro_usuario, forma_pagamento=outro_dinheiro
+        )
+        resumo = self._resumo()
+        self.assertEqual(resumo["recebido_hoje"], ZERO)
+
+    def test_por_forma_de_pagamento(self):
+        self._vender(forma=self.dinheiro)
+        self._vender(forma=self.pix)
+        resumo = self._resumo()
+        por_nome = {linha["nome"]: linha["total"] for linha in resumo["por_forma"]}
+        self.assertEqual(por_nome["Dinheiro"], Decimal("10.00"))
+        self.assertEqual(por_nome["PIX"], Decimal("10.00"))
+        self.assertEqual(resumo["total_formas"], Decimal("20.00"))
+
+    def test_filtro_por_forma_de_pagamento(self):
+        self._vender(forma=self.dinheiro)
+        self._vender(forma=self.pix)
+        resumo = self._resumo(forma_pagamento=self.pix)
+        self.assertEqual(resumo["total_periodo"], Decimal("10.00"))
+        self.assertEqual(len(resumo["por_forma"]), 1)
+        self.assertEqual(resumo["por_forma"][0]["nome"], "PIX")
+
+    def test_status_todas_inclui_canceladas(self):
+        from apps.sales.services import cancelar_venda
+
+        self._vender()
+        venda = self._vender()
+        cancelar_venda(venda, motivo="Teste", usuario=self.usuario)
+        resumo = self._resumo(status="TODAS")
+        self.assertEqual(resumo["total_periodo"], Decimal("20.00"))
+        resumo_finalizadas = self._resumo(status="FINALIZADA")
+        self.assertEqual(resumo_finalizadas["total_periodo"], Decimal("10.00"))
+
+    def test_resumo_dia_e_serie_preenchidos(self):
+        self._vender()
+        resumo = self._resumo()
+        self.assertEqual(len(resumo["resumo_dia"]), 1)
+        self.assertEqual(resumo["resumo_dia"][0]["vendas"], 1)
+        self.assertEqual(resumo["resumo_dia"][0]["ticket_medio"], Decimal("10.00"))
+        self.assertEqual(len(resumo["serie"]), 1)
+        self.assertEqual(resumo["serie"][0]["total"], Decimal("10.00"))
+
+
 class ConcorrenciaFinanceiraTest(TransactionTestCase):
     """Duas saídas simultâneas de 700 com saldo 1000: no máximo uma passa."""
 

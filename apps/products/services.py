@@ -100,6 +100,9 @@ def criar_produto(*, tenant, usuario=None, **dados):
     marca = dados.get("marca")
     _validar_relacoes_tenant(tenant, categoria=categoria, marca=marca)
 
+    if not dados.get("codigo"):
+        dados["codigo"] = gerar_codigo_produto(tenant)
+
     produto = Produto(tenant=tenant, **dados)
     try:
         produto.full_clean()
@@ -114,6 +117,24 @@ def criar_produto(*, tenant, usuario=None, **dados):
         descricao=f"Produto {produto.nome} criado.",
     )
     return produto
+
+
+def gerar_codigo_produto(tenant):
+    """Gera o próximo código interno sequencial do tenant (6 dígitos).
+
+    A unicidade é garantida pela constraint por tenant; em caso de colisão
+    rara o chamador pode tentar novamente.
+    """
+    maior = (
+        Produto.objects.for_tenant(tenant)
+        .exclude(codigo="")
+        .values_list("codigo", flat=True)
+    )
+    maior_numero = 0
+    for codigo in maior:
+        if codigo.isdigit():
+            maior_numero = max(maior_numero, int(codigo))
+    return f"{maior_numero + 1:06d}"
 
 
 @transaction.atomic

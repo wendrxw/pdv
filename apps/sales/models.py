@@ -121,7 +121,19 @@ class Venda(TenantAwareModel):
         on_delete=models.SET_NULL,
         related_name="vendas_realizadas",
     )
-    cliente_nome = models.CharField(max_length=200, blank=True)
+    cliente = models.ForeignKey(
+        "customers.Cliente",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="vendas",
+        help_text="Cliente cadastrado associado à venda (opcional).",
+    )
+    cliente_nome = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Nome do cliente congelado no momento da venda.",
+    )
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ABERTA
     )

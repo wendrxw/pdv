@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.contrib import messages
@@ -6,7 +7,10 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.accounts.models import User
 from apps.audit.models import registrar
+from apps.products.models import Categoria as CategoriaProduto
+from apps.sales.models import Caixa, Venda
 
 from .forms import (
     ContaFinanceiraForm,
@@ -19,6 +23,7 @@ from .models import (
     ContaFinanceira,
     ContaReceber,
     Entrada,
+    FormaPagamento,
     ParcelaReceber,
     Saida,
 )
@@ -37,7 +42,7 @@ from .services import (
     pagar_saida,
     receber_entrada,
     receber_parcela,
-    resumo_analise,
+    resumo_controle,
 )
 
 ITENS_POR_PAGINA = 25
@@ -71,6 +76,80 @@ def _periodo(request):
     return inicio, fim
 
 
+PRESETS_PERIODO = {
+    "hoje": "Hoje",
+    "ontem": "Ontem",
+    "semana": "Esta semana",
+    "mes": "Este mês",
+    "7d": "Últimos 7 dias",
+    "30d": "Últimos 30 dias",
+    "personalizado": "Período personalizado",
+}
+
+
+def _periodo_controle(request):
+    """Período do dashboard: presets ou intervalo personalizado."""
+    hoje = timezone.localdate()
+    periodo = request.GET.get("periodo", "30d")
+    inicio_semana = hoje - timedelta(days=hoje.weekday())
+    primeiro_mes = hoje.replace(day=1)
+    intervalos = {
+        "hoje": (hoje, hoje),
+        "ontem": (hoje - timedelta(days=1), hoje - timedelta(days=1)),
+        "semana": (inicio_semana, hoje),
+        "mes": (primeiro_mes, hoje),
+        "7d": (hoje - timedelta(days=6), hoje),
+        "30d": (hoje - timedelta(days=29), hoje),
+    }
+    if periodo == "personalizado":
+        inicio, fim = _periodo(request)
+    else:
+        inicio, fim = intervalos.get(periodo, intervalos["30d"])
+        if periodo not in intervalos:
+            periodo = "30d"
+    return inicio, fim, periodo
+
+
+def _filtros_controle(request, tenant):
+    """Filtros opcionais do dashboard, sempre validados contra o tenant."""
+    forma_uuid = request.GET.get("forma_pagamento", "").strip()
+    categoria_pk = request.GET.get("categoria", "").strip()
+    operador_pk = request.GET.get("operador", "").strip()
+    caixa_uuid = request.GET.get("caixa", "").strip()
+    status = request.GET.get("status", Venda.Status.FINALIZADA)
+    if status not in (Venda.Status.FINALIZADA, Venda.Status.CANCELADA, "TODAS"):
+        status = Venda.Status.FINALIZADA
+    return {
+        "forma_pagamento": (
+            FormaPagamento.objects.for_tenant(tenant).filter(uuid=forma_uuid).first()
+            if forma_uuid
+            else None
+        ),
+        "categoria": (
+            CategoriaProduto.objects.for_tenant(tenant)
+            .filter(pk=categoria_pk)
+            .first()
+            if categoria_pk
+            else None
+        ),
+        "operador": (
+            User.objects.filter(tenant=tenant, pk=operador_pk).first()
+            if operador_pk
+            else None
+        ),
+        "caixa": (
+            Caixa.objects.for_tenant(tenant).filter(uuid=caixa_uuid).first()
+            if caixa_uuid
+            else None
+        ),
+        "status": status,
+        "forma_uuid": forma_uuid,
+        "categoria_pk": categoria_pk,
+        "operador_pk": operador_pk,
+        "caixa_uuid": caixa_uuid,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Análise
 # ---------------------------------------------------------------------------
@@ -81,21 +160,65 @@ def analise(request):
     tenant = _tenant_atual(request)
     if tenant is None:
         return redirect("dashboard")
-    inicio, fim = _periodo(request)
-    modo = request.GET.get("modo", "CAIXA")
-    if modo not in ("CAIXA", "COMPETENCIA"):
-        modo = "CAIXA"
+    inicio, fim, periodo = _periodo_controle(request)
+    filtros = _filtros_controle(request, tenant)
     try:
-        resumo = resumo_analise(tenant, inicio=inicio, fim=fim, modo=modo)
+        controle = resumo_controle(
+            tenant,
+            inicio=inicio,
+            fim=fim,
+            forma_pagamento=filtros["forma_pagamento"],
+            categoria=filtros["categoria"],
+            operador=filtros["operador"],
+            caixa=filtros["caixa"],
+            status=filtros["status"],
+        )
     except FinancialError as exc:
         messages.error(request, str(exc))
-        resumo = resumo_analise(tenant, inicio=fim, fim=fim, modo=modo)
+        controle = resumo_controle(tenant, inicio=fim, fim=fim)
+
+    serie_json = json.dumps(
+        [
+            {"data": linha["data"].strftime("%d/%m/%Y"), "total": float(linha["total"])}
+            for linha in controle["serie"]
+        ],
+        ensure_ascii=False,
+    )
+    por_forma_json = json.dumps(
+        [
+            {
+                "nome": linha["nome"],
+                "total": float(linha["total"]),
+                "pct": float(linha["pct"]),
+            }
+            for linha in controle["por_forma"]
+        ],
+        ensure_ascii=False,
+    )
     contexto = {
         "inicio": inicio,
         "fim": fim,
-        "modo": modo,
-        "resumo": resumo,
-        **resumo,
+        "periodo": periodo,
+        "presets_periodo": PRESETS_PERIODO,
+        "status": filtros["status"],
+        "statuses_controle": [
+            (Venda.Status.FINALIZADA, "Finalizadas"),
+            (Venda.Status.CANCELADA, "Canceladas"),
+            ("TODAS", "Todas"),
+        ],
+        "forma_uuid": filtros["forma_uuid"],
+        "categoria_pk": filtros["categoria_pk"],
+        "operador_pk": filtros["operador_pk"],
+        "caixa_uuid": filtros["caixa_uuid"],
+        "formas": FormaPagamento.objects.for_tenant(tenant).filter(ativo=True),
+        "categorias": CategoriaProduto.objects.for_tenant(tenant).filter(ativo=True),
+        "operadores": User.objects.filter(tenant=tenant, is_active=True),
+        "caixas": Caixa.objects.for_tenant(tenant),
+        "serie_json": serie_json,
+        "por_forma_json": por_forma_json,
+        "resumo_dia": controle["resumo_dia"][::-1][:5],
+        "por_categoria": controle["por_categoria"],
+        **controle,
     }
     return render(request, "financial/dashboard.html", contexto)
 
