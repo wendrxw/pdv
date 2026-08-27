@@ -38,7 +38,12 @@ DEBUG = env_bool("DJANGO_DEBUG", "True")
 
 ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = ["*"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://pdv.wendrxw.online",
+    "https://www.pdv.wendrxw.online",
+    "http://localhost",
+    "http://127.0.0.1",
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
