@@ -351,21 +351,27 @@ def parear_estacao(codigo: str):
     Retorna (estacao, token). O token trafega em claro uma única vez e é
     armazenado apenas como hash bcrypt no servidor.
     """
-    estacao = (
-        EstacaoImpressao.objects.filter(codigo_pareamento=codigo)
-        .select_for_update()
-        .first()
-    )
-    if estacao is None:
-        raise PrintingError("Código de pareamento inválido ou já utilizado.")
-    token = secrets.token_urlsafe(32)
-    estacao.token_hash = make_password(token)
-    estacao.status = EstacaoImpressao.Status.ATIVA
-    estacao.codigo_pareamento = ""
-    estacao.data_pareamento = timezone.now()
-    estacao.save(
-        update_fields=["token_hash", "status", "codigo_pareamento", "data_pareamento"]
-    )
+    with transaction.atomic():
+        estacao = (
+            EstacaoImpressao.objects.filter(codigo_pareamento=codigo)
+            .select_for_update()
+            .first()
+        )
+        if estacao is None:
+            raise PrintingError("Código de pareamento inválido ou já utilizado.")
+        token = secrets.token_urlsafe(32)
+        estacao.token_hash = make_password(token)
+        estacao.status = EstacaoImpressao.Status.ATIVA
+        estacao.codigo_pareamento = ""
+        estacao.data_pareamento = timezone.now()
+        estacao.save(
+            update_fields=[
+                "token_hash",
+                "status",
+                "codigo_pareamento",
+                "data_pareamento",
+            ]
+        )
     registrar(
         "pareou estação de impressão",
         entidade=estacao,

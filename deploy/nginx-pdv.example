@@ -14,7 +14,10 @@ upstream pdv_app {
 
 server {
     listen 80;
-    listen [::]:80;
+    # IMPORTANTE: não usar `listen [::]:80` em servidor compartilhado —
+    # sites existentes podem escutar apenas IPv4; adicionar o socket IPv6
+    # aqui faz o cloudflared (localhost → ::1) entregar requests de outros
+    # domínios neste socket e o nginx responde 400 (sem server_name match).
     server_name pdv.wendrxw.online;
 
     client_max_body_size 5m;
