@@ -4,6 +4,30 @@
 > Data: 26/08/2026. Branch auditada: `feat/tsk-00011-ui-ux` (contém
 > TSK_00011, TSK_00012 e TSK_00013; aguardando revisão/merge do PR).
 
+## 0. Status do deploy (atualizado 27/08/2026)
+
+O sistema está **EM PRODUÇÃO** em https://pdv.wendrxw.online:
+
+- Servidor: Debian 12 **i686** (32-bit) → stack ajustada para
+  **Python 3.11 + Django 5.2** (compatível com o servidor; 451 testes
+  verdes nessa stack).
+- `main` foi atualizada: merge da branch de UI/UX (`7d87993`) +
+  hotfixes de produção (`e891a3d`: transaction no pareamento de
+  estações e nginx sem listen IPv6).
+- App em `/srv/apps/pdv`, gunicorn `127.0.0.1:8001` (systemd
+  `pdv.service`), Nginx (`/etc/nginx/sites-available/pdv`), túnel
+  Cloudflare dedicado **pdv** (`3683afdf...`, serviço `pdv-tunnel`).
+- PostgreSQL 15 local: role/database `pdv`.
+- Validado ponta a ponta: login (CSRF/sessão), dashboard institucional,
+  estáticos (logo), API do agente (pair 400/401, poll 401) e
+  preservação do **farolhub.online** (site vizinho) — 200.
+
+Pendências operacionais pós-deploy:
+1. Trocar a senha do superusuário `admin` (provisória).
+2. Configurar cron `check_print_agents` (§11.4 do guia de produção).
+3. Configurar backup diário (pg_dump + media) e testar restauração.
+4. Cadastrar Emitente/NFC-e (homologação) antes de operar fiscal.
+
 ## 1. Resumo executivo
 
 O sistema está **funcionalmente próximo do MVP**: vendas com caixa,
