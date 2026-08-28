@@ -75,7 +75,9 @@
 
         <div class="border-t border-white/10 px-5 py-4">
             <div class="flex items-center justify-between">
-                <span id="sidebar-versao" class="text-xs font-medium text-slate-400">Versão 1.0.0</span>
+                <span id="sidebar-versao" class="text-xs font-medium text-slate-400">
+                    Versão 1.0.0{% if versao_deploy %} · {{ versao_deploy }}{% endif %}
+                </span>
                 <button type="button" id="botao-recolher-sidebar" class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white" title="Recolher menu">
                     {% include "partials/icon.html" with name="chevron-left" class="h-4 w-4" %}
                 </button>

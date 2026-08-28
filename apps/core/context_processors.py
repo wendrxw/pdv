@@ -1,5 +1,20 @@
 """Context processors do projeto."""
 
+from pathlib import Path
+
+
+def versao_deploy(request):
+    """Commit em execução (escrito no deploy em .deploy-version).
+
+    Permite confirmar visualmente qual build está em produção.
+    """
+    try:
+        caminho = Path(__file__).resolve().parent.parent.parent / ".deploy-version"
+        texto = caminho.read_text("utf-8").strip()
+    except OSError:
+        texto = ""
+    return {"versao_deploy": texto[:12]}
+
 
 def sidebar_ativa(request):
     """Item ativo da sidebar, derivado do caminho (nunca do frontend)."""
