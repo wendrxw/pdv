@@ -19,7 +19,7 @@ from .escpos import (
     selecionar_codepage,
 )
 from .labels import LabelError, gerar_epl2_job
-from .printer import PrinterError, UsbPrinterDevice
+from .printer import PrinterError, criar_dispositivo
 from .receipt import formatar_dados_comprovante, largura_papel
 
 MAX_PROCESSADOS = 500
@@ -103,7 +103,7 @@ class PrintAgent:
         self.log = logger or logging.getLogger("print-agent")
         self.processados = _carregar_processados(config)
         self.impressora_etiquetas = impressora_etiquetas or (
-            UsbPrinterDevice(config.label_device) if config.label_device else None
+            criar_dispositivo(config.label_device) if config.label_device else None
         )
 
     def ciclo(self):

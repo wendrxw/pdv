@@ -84,12 +84,18 @@ N  (limpa)  D8 (densidade 203)  q<largura>  Q<altura>,<gap>  P2
   (`mostrar_texto_codigo`).
 - Nomes com acento vão em latin-1 (tabela estendida da Elgin).
 - Variáveis do agente:
-  - `PRINTER_LABEL_DEVICE` (ex.: `/dev/usb/lp1`; vazio desativa etiquetas
-    na estação);
+  - `PRINTER_LABEL_DEVICE`: **Linux** → caminho do dispositivo (ex.:
+    `/dev/usb/lp1`); **Windows** → NOME da impressora exatamente como em
+    "Painel de Controle → Dispositivos e Impressoras" (ex.: `Elgin L42 PRO`).
+    Vazio desativa etiquetas na estação;
   - `PRINTER_LABEL_DPI` (padrão 203);
   - `PRINTER_LABEL_LINGUAGEM` (padrão `epl2`).
 - Diagnóstico local: `python -m app.main label-test` imprime a etiqueta
   de calibração direto, sem servidor.
+- **Windows:** o agente envia os bytes pelo spooler com datatype RAW
+  (win32print, via `pywin32`) — o driver/utility instalado não interfere.
+  Instalação: `pip install .` na pasta `local-print-agent` e
+  `python -m app.main pair` + `run` (ver README do agente).
 
 ## Idempotência e falhas
 

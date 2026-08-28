@@ -31,7 +31,7 @@ from .escpos import (
     selecionar_codepage,
 )
 from .labels import gerar_epl2_calibracao
-from .printer import UsbPrinterDevice
+from .printer import criar_dispositivo
 
 logger = logging.getLogger("print-agent")
 
@@ -90,12 +90,14 @@ def comando_pair(config):
 
 
 def _impressora(config, dispositivo=None):
-    """Dispositivo USB (ou fake injetado nos testes)."""
-    impressora = dispositivo or UsbPrinterDevice(config.device)
+    """Dispositivo da plataforma (USB no Linux, nome da impressora no
+    Windows) — ou fake injetado nos testes."""
+    impressora = dispositivo or criar_dispositivo(config.device)
     if not impressora.disponivel():
         raise SystemExit(
-            f"Impressora indisponível em {config.device}. "
-            "Verifique o cabo e a permissão (grupo lp)."
+            f"Impressora indisponível: {config.device}. "
+            "No Windows confira o nome em 'Painel de Controle → "
+            "Dispositivos e Impressoras'; no Linux o cabo e o grupo lp."
         )
     return impressora
 
@@ -201,11 +203,12 @@ def comando_label_test(config, dispositivo=None):
 
 
 def _impressora_etiquetas(config, dispositivo=None):
-    impressora = dispositivo or UsbPrinterDevice(config.label_device)
+    impressora = dispositivo or criar_dispositivo(config.label_device)
     if not impressora.disponivel():
         raise SystemExit(
-            f"Impressora de etiquetas indisponível em {config.label_device}. "
-            "Verifique o cabo e a permissão (grupo lp)."
+            f"Impressora de etiquetas indisponível: {config.label_device}. "
+            "No Windows confira o nome em 'Painel de Controle → "
+            "Dispositivos e Impressoras'; no Linux o cabo e o grupo lp."
         )
     return impressora
 
@@ -220,11 +223,11 @@ def comando_raw_test(config):
     Sem nenhum comando ESC/POS — serve para impressoras com firmware
     caprichoso (ex.: Tomate MDK-080, driver oficial só para Windows).
     """
-    impressora = UsbPrinterDevice(config.device)
+    impressora = criar_dispositivo(config.device)
     if not impressora.disponivel():
         raise SystemExit(
-            f"Impressora indisponível em {config.device}. "
-            "Verifique o cabo e a permissão (grupo lp)."
+            f"Impressora indisponível: {config.device}. "
+            "Verifique o cabo e o nome da impressora."
         )
     impressora.escrever(b"TESTE SEM SUDO\n\n\n")
     print(f"'TESTE SEM SUDO' enviado direto para {config.device}")
@@ -233,7 +236,7 @@ def comando_raw_test(config):
 def comando_run(config):
     _configurar_log(config)
     cliente, credencial = _cliente_autenticado(config)
-    impressora = UsbPrinterDevice(config.device)
+    impressora = criar_dispositivo(config.device)
     agente = PrintAgent(config, cliente, impressora, logger=logger)
     logger.info(
         "Agente iniciado: estação '%s' · loja '%s' · impressora %s",

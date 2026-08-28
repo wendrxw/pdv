@@ -67,6 +67,50 @@ O código de pareamento pode ficar definido em
 `/etc/sv/print-agent/conf` (`PRINT_AGENT_PAIR_CODE=`) na primeira
 execução; após o pareamento, deixe a variável vazia.
 
+## Windows (notebook da loja)
+
+O agente roda em Windows usando o spooler nativo (win32print, datatype
+**RAW** — os bytes EPL2/ESC/POS chegam intactos ao firmware, sem
+transformação do driver). O driver/utility da impressora pode ficar
+instalado normalmente.
+
+### Instalação (PowerShell)
+
+```powershell
+# 1. Python 3.9+ (python.org) — marque "Add python.exe to PATH"
+# 2. Copie a pasta local-print-agent para o notebook (ex.: C:\print-agent)
+cd C:\print-agent
+pip install .            # instala pywin32 automaticamente
+
+# 3. Variáveis do ambiente (PowerShell):
+$env:PRINT_AGENT_SERVER_URL="https://pdv.wendrxw.online"
+# NOME da impressora EXATAMENTE como aparece em
+# "Painel de Controle → Dispositivos e Impressoras":
+$env:PRINTER_DEVICE="NomeDaImpressoraTermica"
+$env:PRINTER_LABEL_DEVICE="Elgin L42 PRO"    # impressora de ETIQUETAS
+$env:PRINT_AGENT_PAIR_CODE="CODIGO-DO-PDV"   # Impressão → Estações
+
+# 4. Testes antes de parear:
+python -m app.main test          # página de teste na térmica
+python -m app.main label-test    # etiqueta de calibração (L42 Pro)
+
+# 5. Pareamento (uso único) e execução:
+python -m app.main pair
+python -m app.main run           # loop: poll → imprime → reporta
+```
+
+Dica: se a impressora não aparecer em `test`/`label-test`, confira o
+nome exato em **Painel de Controle → Dispositivos e Impressoras** e o
+cabo USB (a impressora precisa estar LIGADA e listada). A credencial
+fica salva em `~/.print-agent/credencial.json`.
+
+### Rodar em segundo plano (Windows)
+
+- **Opção simples (testes):** `pythonw -m app.main run` (janela oculta);
+- **Produção:** Agendador de Tarefas (ação: `C:\Python...\pythonw.exe -m
+  app.main run`, iniciar na sessão do usuário logado, reiniciar se falhar)
+  ou NSSM como serviço.
+
 ## Uso
 
 ```bash
