@@ -28,3 +28,5 @@ staticfiles/
 .vscode/
 *.swp
 .DS_Store
+# Credenciais de acesso ao servidor (nunca versionar)
+deploy/servidor.ssh.env
