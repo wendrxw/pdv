@@ -246,7 +246,8 @@ CSRF_COOKIE_HTTPONLY = False
 # Atrás do Cloudflare Tunnel + Nginx o TLS termina no proxy e o Django
 # recebe HTTP. Só confiar no X-Forwarded-Proto quando explicitamente
 # configurado (gunicorn fica em 127.0.0.1, sem exposição direta).
-if env_bool("PDV_BEHIND_PROXY", "False"):
+PDV_BEHIND_PROXY = env_bool("PDV_BEHIND_PROXY", "False")
+if PDV_BEHIND_PROXY:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if not DEBUG:

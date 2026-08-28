@@ -55,6 +55,26 @@ def _parear(config, cliente):
     return credencial
 
 
+def _erro_pareamento_amigavel(exc):
+    """Mensagem curta e em português para falhas no pareamento."""
+    texto = str(exc)
+    sugestoes = {
+        "inválido": "O código está errado ou já foi usado. Gere um novo código "
+        "em Impressão → Estações e tente novamente.",
+        "Muitas tentativas": "Muitas tentativas. Aguarde alguns minutos e "
+        "tente novamente.",
+    }
+    for trecho, sugestao in sugestoes.items():
+        if trecho.lower() in texto.lower():
+            return f"{texto}\n{sugestao}"
+    if "Falha de rede" in texto:
+        return (
+            f"{texto}\nVerifique se o servidor está correto "
+            "(ex.: https://pdv.wendrxw.online) e se há internet."
+        )
+    return texto
+
+
 def _cliente_autenticado(config):
     """Retorna (cliente, credencial) já autenticados."""
     cliente = PrintAgentClient(config.server_url, timeout=config.http_timeout)
@@ -83,10 +103,15 @@ def comando_pair(config):
         raise SystemExit(
             "Informe o código: PRINT_AGENT_PAIR_CODE=ABC123 python -m app.main pair"
         )
-    credencial = _parear(config, cliente)
+    try:
+        credencial = _parear(config, cliente)
+    except (AuthError, PrintAgentClientError) as exc:
+        print("NÃO FOI POSSÍVEL PAREAR:", _erro_pareamento_amigavel(exc))
+        return 1
     print(
         f"Pareado! Estação: {credencial.get('nome')} · Loja: {credencial.get('loja')}"
     )
+    return 0
 
 
 def _impressora(config, dispositivo=None):
@@ -387,7 +412,12 @@ def comando_run(config):
     precisa_configurar = precisa_parear or not config.device or not config.label_device
     if precisa_configurar and sys.stdin.isatty():
         config, precisa_parear = _configuracao_interativa(config, precisa_parear)
-    cliente, credencial = _cliente_autenticado(config)
+    try:
+        cliente, credencial = _cliente_autenticado(config)
+    except (AuthError, PrintAgentClientError) as exc:
+        logger.error("NÃO FOI POSSÍVEL PAREAR: %s", _erro_pareamento_amigavel(exc))
+        print("NÃO FOI POSSÍVEL PAREAR:", _erro_pareamento_amigavel(exc))
+        return 1
     impressora = criar_dispositivo(config.device)
     agente = PrintAgent(config, cliente, impressora, logger=logger)
     logger.info(
@@ -449,8 +479,7 @@ def main(argv=None):
     _configurar_log(config)
 
     if argumentos.comando == "pair":
-        comando_pair(config)
-        return 0
+        return comando_pair(config)
     if argumentos.comando == "test":
         comando_test(config)
         return 0

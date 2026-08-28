@@ -240,3 +240,53 @@ class ThrottleTest(PrintingBaseTestCase):
             content_type="application/json",
         )
         self.assertEqual(resposta.status_code, 429)
+
+    @mock.patch("apps.printing.api.settings")
+    def test_throttle_usa_ip_real_atras_do_proxy(self, settings_fake):
+        settings_fake.PDV_BEHIND_PROXY = True
+        url = reverse("printing_api:pair")
+        for _ in range(3):
+            resposta = self.client.post(
+                url,
+                data=json.dumps({"codigo": "ZZZZZZ"}),
+                content_type="application/json",
+                HTTP_X_FORWARDED_FOR="200.100.50.1",
+            )
+            self.assertEqual(resposta.status_code, 400)
+        # Outro cliente (IP diferente) não é bloqueado pelo balde do primeiro.
+        resposta = self.client.post(
+            url,
+            data=json.dumps({"codigo": "ZZZZZZ"}),
+            content_type="application/json",
+            HTTP_X_FORWARDED_FOR="200.100.50.2",
+        )
+        self.assertEqual(resposta.status_code, 400)
+        # O primeiro cliente, sim, está bloqueado.
+        resposta = self.client.post(
+            url,
+            data=json.dumps({"codigo": "ZZZZZZ"}),
+            content_type="application/json",
+            HTTP_X_FORWARDED_FOR="200.100.50.1",
+        )
+        self.assertEqual(resposta.status_code, 429)
+
+    @mock.patch("apps.printing.api.settings")
+    def test_sem_proxy_ignora_x_forwarded_for(self, settings_fake):
+        settings_fake.PDV_BEHIND_PROXY = False
+        url = reverse("printing_api:pair")
+        for _ in range(3):
+            resposta = self.client.post(
+                url,
+                data=json.dumps({"codigo": "ZZZZZZ"}),
+                content_type="application/json",
+                HTTP_X_FORWARDED_FOR="200.100.50.9",
+            )
+            self.assertEqual(resposta.status_code, 400)
+        # Sem proxy o cabeçalho é ignorado: todo mundo usa REMOTE_ADDR.
+        resposta = self.client.post(
+            url,
+            data=json.dumps({"codigo": "ZZZZZZ"}),
+            content_type="application/json",
+            HTTP_X_FORWARDED_FOR="200.100.50.8",
+        )
+        self.assertEqual(resposta.status_code, 429)
