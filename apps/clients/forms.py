@@ -19,11 +19,20 @@ class ClientePlataformaForm(forms.ModelForm):
         status = self.cleaned_data["status"]
         if status != ClientePlataforma.Status.ATIVO:
             return status
-        atual = self.instance.status
+        cliente = self.instance
+        if cliente.pk is None:
+            # Novo cadastro: nunca ativar direto pelo formulário — a
+            # ativação é feita pela ação dedicada (cria o tenant).
+            raise forms.ValidationError(
+                "Novos clientes não podem ser ativados pelo formulário. "
+                "Salve como Lead e use a ação de ativação, que cria o "
+                "tenant automaticamente."
+            )
+        atual = cliente.status
         if (
             atual != ClientePlataforma.Status.SUSPENSO
             and not Onboarding.objects.filter(
-                cliente=self.instance, tenant__isnull=False
+                cliente=cliente, tenant__isnull=False
             ).exists()
         ):
             raise forms.ValidationError(
