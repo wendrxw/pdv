@@ -113,6 +113,27 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+# Logs: erros 500 SEMPRE aparecem no console (gunicorn → journald).
+# Sem esta configuração o Django, em produção, direciona o traceback de
+# erro apenas para ADMINS (e-mail) — que não está configurado — e o
+# diagnóstico de falhas em produção fica impossível.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
+
 
 # Banco de dados
 # Produção: PostgreSQL via variáveis de ambiente.
