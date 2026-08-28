@@ -1,117 +1,127 @@
-{% extends "sales/pdv_base.html" %}
-{% block pdv_title %}Venda #{{ venda.numero }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Venda #{{ venda.numero }}{% endblock %}
 
-{% block pdv_content %}
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-900">Venda #{{ venda.numero }}</h1>
-        <p class="text-sm text-slate-500">
-            {{ venda.get_status_display }} · {{ venda.data_abertura|date:"d/m/Y H:i" }}
-            {% if venda.data_finalizacao %} · finalizada {{ venda.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}
-            · operador {{ venda.operador.get_full_name|default:venda.operador.username }}
-        </p>
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Venda #{{ venda.numero }}</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                {{ venda.get_status_display }} · {{ venda.data_abertura|date:"d/m/Y H:i" }}
+                {% if venda.data_finalizacao %} · finalizada {{ venda.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}
+                · operador {{ venda.operador.get_full_name|default:venda.operador.username }}
+            </p>
+        </div>
+        <a href="{% url 'sales:vendas' %}"
+           class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+            {% include "partials/icon.html" with name="arrow-left" class="h-4 w-4" %}
+            Voltar
+        </a>
     </div>
-    <a href="{% url 'sales:vendas' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Voltar</a>
-</div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <section class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Itens</h2>
-            <table class="min-w-full divide-y divide-slate-100 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th class="px-6 py-3">Produto</th><th class="px-6 py-3">Qtd.</th><th class="px-6 py-3">Preço</th><th class="px-6 py-3">Subtotal</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    {% for item in itens %}
-                        <tr>
-                            <td class="px-6 py-3">{{ item.produto.nome }}</td>
-                            <td class="px-6 py-3">{{ item.quantidade }}</td>
-                            <td class="px-6 py-3">R$ {{ item.preco_unitario }}</td>
-                            <td class="px-6 py-3 font-semibold">R$ {{ item.subtotal }}</td>
-                        </tr>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section class="space-y-6 lg:col-span-2">
+            <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <h2 class="border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">Itens</h2>
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                    <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr><th class="px-5 py-3">Produto</th><th class="px-5 py-3">Qtd.</th><th class="px-5 py-3">Preço</th><th class="px-5 py-3">Subtotal</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for item in itens %}
+                            <tr>
+                                <td class="px-5 py-3 font-medium text-slate-700">{{ item.produto.nome }}</td>
+                                <td class="px-5 py-3 text-slate-600">{{ item.quantidade|floatformat:'-3' }}</td>
+                                <td class="px-5 py-3 text-slate-600">R$ {{ item.preco_unitario }}</td>
+                                <td class="px-5 py-3 font-semibold text-slate-800">R$ {{ item.subtotal }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="px-5 py-8 text-center text-slate-400">Sem itens.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-3 text-base font-bold text-slate-900">Pagamentos</h2>
+                <ul class="divide-y divide-slate-50 text-sm">
+                    {% for pagamento in pagamentos %}
+                        <li class="flex justify-between py-2.5">
+                            <span class="text-slate-700">{{ pagamento.forma_pagamento.nome }}</span>
+                            <span class="font-semibold text-slate-800">R$ {{ pagamento.valor }}</span>
+                        </li>
+                    {% empty %}
+                        <li class="py-2 text-slate-400">Sem pagamentos.</li>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </ul>
+            </div>
+        </section>
 
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <h2 class="px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-100">Pagamentos</h2>
-            <ul class="px-6 py-4 divide-y divide-slate-100 text-sm">
-                {% for pagamento in pagamentos %}
-                    <li class="py-2 flex justify-between">
-                        <span>{{ pagamento.forma_pagamento.nome }}</span>
-                        <span class="font-semibold">R$ {{ pagamento.valor }}</span>
-                    </li>
-                {% empty %}
-                    <li class="text-slate-400">Sem pagamentos.</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </section>
+        <aside class="space-y-4">
+            <div class="space-y-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm shadow-sm">
+                <p class="flex justify-between"><span class="text-slate-500">Subtotal</span><span class="font-medium text-slate-800">R$ {{ venda.subtotal }}</span></p>
+                <p class="flex justify-between"><span class="text-slate-500">Desconto</span><span class="font-medium text-slate-800">R$ {{ venda.desconto }}</span></p>
+                <p class="flex justify-between border-t border-slate-100 pt-2 text-lg font-extrabold"><span>Total</span><span>R$ {{ venda.total }}</span></p>
+            </div>
 
-    <aside class="space-y-4">
-        <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-2 text-sm">
-            <p class="flex justify-between"><span class="text-slate-500">Subtotal</span><span>R$ {{ venda.subtotal }}</span></p>
-            <p class="flex justify-between"><span class="text-slate-500">Desconto</span><span>R$ {{ venda.desconto }}</span></p>
-            <p class="flex justify-between text-lg font-bold border-t pt-2"><span>Total</span><span>R$ {{ venda.total }}</span></p>
-        </div>
+            {% if venda.status == "FINALIZADA" and config_impressao %}
+                <section id="painel-impressao" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                         data-status-url="{% url 'printing:status_venda' venda.uuid %}"
+                         data-estado="{{ estado_impressao }}"
+                         data-erro="{{ print_job.erro|default:'' }}">
+                    <h2 class="mb-3 text-base font-bold text-slate-900">Comprovante</h2>
+                    <p id="status-texto" class="mb-1 text-sm font-medium text-slate-800">
+                        {% if estado_impressao == "PRINTED" %}✓ Comprovante impresso
+                        {% elif estado_impressao == "FAILED" %}⚠ Não foi possível imprimir
+                        {% elif estado_impressao == "PROCESSING" %}Imprimindo...
+                        {% elif estado_impressao == "AGUARDANDO_AGENTE" %}Aguardando o agente de impressão da loja…
+                        {% elif estado_impressao == "AGUARDANDO_IMPRESSORA" %}Aguardando impressora…
+                        {% else %}Venda finalizada!{% endif %}
+                    </p>
+                    <p id="status-erro" class="mb-2 text-xs text-red-600 {% if estado_impressao != 'FAILED' or not print_job.erro %}hidden{% endif %}">
+                        {{ print_job.erro }}
+                    </p>
+                    <a id="link-estacoes" href="{% url 'printing:estacoes' %}"
+                       class="mb-3 block text-xs font-medium text-brand-600 hover:text-brand-700 {% if estado_impressao != 'AGUARDANDO_AGENTE' %}hidden{% endif %}">
+                        Nenhuma estação ativa — configure em Impressão → Estações e inicie o agente na máquina da loja.
+                    </a>
+                    {% if print_job and print_job.status == "PRINTED" %}
+                        <p class="mb-3 text-xs text-slate-400">impresso em {{ print_job.data_impressao|date:"d/m/Y H:i" }}</p>
+                    {% endif %}
+                    <form id="form-imprimir" method="post"
+                          class="{% if estado_impressao != 'SEM_JOB' and estado_impressao != 'PRINTED' %}hidden{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="imprimir">
+                        <button type="submit" class="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-700">
+                            {% if estado_impressao == "PRINTED" %}Imprimir novamente{% else %}Imprimir comprovante{% endif %}
+                        </button>
+                    </form>
+                    <form id="form-tentar" method="post"
+                          class="{% if estado_impressao != 'FAILED' %}hidden{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="tentar_novamente">
+                        <button type="submit" class="w-full rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-amber-600">Tentar novamente</button>
+                    </form>
+                    <a id="nao-imprimir" href="{% url 'sales:vendas' %}"
+                       class="mt-3 block text-center text-xs text-slate-400 hover:text-slate-600 {% if estado_impressao != 'SEM_JOB' %}hidden{% endif %}">Não imprimir</a>
+                </section>
+            {% endif %}
 
-        {% if venda.status == "FINALIZADA" and config_impressao %}
-            <section id="painel-impressao" class="bg-white rounded-xl border border-slate-200 p-6"
-                     data-status-url="{% url 'printing:status_venda' venda.uuid %}"
-                     data-estado="{{ estado_impressao }}"
-                     data-erro="{{ print_job.erro|default:'' }}">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Comprovante</h2>
-                <p id="status-texto" class="text-sm font-medium text-slate-800 mb-1">
-                    {% if estado_impressao == "PRINTED" %}✓ Comprovante impresso
-                    {% elif estado_impressao == "FAILED" %}⚠ Não foi possível imprimir
-                    {% elif estado_impressao == "PROCESSING" %}Imprimindo...
-                    {% elif estado_impressao == "AGUARDANDO_AGENTE" %}Aguardando o agente de impressão da loja…
-                    {% elif estado_impressao == "AGUARDANDO_IMPRESSORA" %}Aguardando impressora…
-                    {% else %}Venda finalizada!{% endif %}
-                </p>
-                <p id="status-erro" class="text-xs text-red-600 mb-2 {% if estado_impressao != 'FAILED' or not print_job.erro %}hidden{% endif %}">
-                    {{ print_job.erro }}
-                </p>
-                <a id="link-estacoes" href="{% url 'printing:estacoes' %}"
-                   class="mb-3 block text-xs text-indigo-600 hover:text-indigo-800 {% if estado_impressao != 'AGUARDANDO_AGENTE' %}hidden{% endif %}">
-                    Nenhuma estação ativa — configure em Impressão → Estações e inicie o agente na máquina da loja.
-                </a>
-                {% if print_job and print_job.status == "PRINTED" %}
-                    <p class="text-xs text-slate-400 mb-3">impresso em {{ print_job.data_impressao|date:"d/m/Y H:i" }}</p>
-                {% endif %}
-                <form id="form-imprimir" method="post"
-                      class="{% if estado_impressao != 'SEM_JOB' and estado_impressao != 'PRINTED' %}hidden{% endif %}">
+            {% if venda.status == "FINALIZADA" or venda.status == "ABERTA" %}
+                <form method="post" onsubmit="return confirm('Cancelar a venda?');"
+                      class="rounded-2xl border border-red-100 bg-white p-6 shadow-sm">
                     {% csrf_token %}
-                    <input type="hidden" name="acao" value="imprimir">
-                    <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700">
-                        {% if estado_impressao == "PRINTED" %}Imprimir novamente{% else %}Imprimir comprovante{% endif %}
-                    </button>
+                    <label class="block text-sm font-medium text-slate-600">Justificativa do cancelamento</label>
+                    <textarea name="motivo" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"></textarea>
+                    <button type="submit" class="mt-2 w-full rounded-xl bg-red-50 px-4 py-2.5 font-bold text-red-700 ring-1 ring-red-200 transition-colors hover:bg-red-100">Cancelar venda</button>
                 </form>
-                <form id="form-tentar" method="post"
-                      class="{% if estado_impressao != 'FAILED' %}hidden{% endif %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="acao" value="tentar_novamente">
-                    <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">Tentar novamente</button>
-                </form>
-                <a id="nao-imprimir" href="{% url 'sales:vendas' %}"
-                   class="mt-3 block text-center text-xs text-slate-400 hover:text-slate-600 {% if estado_impressao != 'SEM_JOB' %}hidden{% endif %}">Não imprimir</a>
-            </section>
-        {% endif %}
-
-        {% if venda.status == "FINALIZADA" or venda.status == "ABERTA" %}
-            <form method="post" onsubmit="return confirm('Cancelar a venda?');"
-                  class="bg-white rounded-xl border border-red-100 p-6">
-                {% csrf_token %}
-                <label class="block text-sm text-slate-600 mb-1">Justificativa do cancelamento</label>
-                <textarea name="motivo" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-2"></textarea>
-                <button type="submit" class="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-2 font-bold text-red-700 hover:bg-red-100">Cancelar venda</button>
-            </form>
-        {% endif %}
-    </aside>
+            {% endif %}
+        </aside>
+    </div>
 </div>
+{% endblock %}
 
+{% block shell_scripts %}
 <script>
     (function () {
         var painel = document.getElementById("painel-impressao");

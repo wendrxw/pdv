@@ -29,7 +29,15 @@ server {
     # Arquivos estáticos (collectstatic). /media/ NÃO é servido —
     # certificados A1 do fiscal nunca ficam públicos.
     location /static/ {
-        alias /opt/pdv/staticfiles/;
+        alias /srv/apps/pdv/staticfiles/;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # Exceção pública: fotos de produto (media/produtos/). O restante de
+    # /media/ continua privado (certificados A1 do módulo fiscal).
+    location /media/produtos/ {
+        alias /srv/apps/pdv/media/produtos/;
         expires 7d;
         add_header Cache-Control "public";
     }

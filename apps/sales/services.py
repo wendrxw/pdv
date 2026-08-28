@@ -328,13 +328,14 @@ def adicionar_item(venda, produto, quantidade, *, usuario=None):
     quantidade = Decimal(quantidade)
     if quantidade <= 0:
         raise SalesError("Quantidade deve ser maior que zero.")
-    try:
-        item = ItemVenda.objects.select_for_update().get(
-            venda=venda, produto=produto
-        )
-    except ItemVenda.DoesNotExist:
-        item = None
     with transaction.atomic():
+        # select_for_update exige transação ativa no PostgreSQL.
+        try:
+            item = ItemVenda.objects.select_for_update().get(
+                venda=venda, produto=produto
+            )
+        except ItemVenda.DoesNotExist:
+            item = None
         venda = Venda.objects.select_for_update().get(pk=venda.pk)
         _venda_aberta(venda)
         if item is None:

@@ -7,7 +7,7 @@ def sidebar_ativa(request):
     ativo = ""
     if caminho in ("/app/", "/app"):
         ativo = "dashboard"
-    elif caminho.startswith("/app/pdv/"):
+    elif caminho.startswith("/app/pdv/") or caminho.startswith("/app/vendas/"):
         ativo = "venda"
     elif caminho.startswith("/app/produtos/"):
         ativo = "produtos"
