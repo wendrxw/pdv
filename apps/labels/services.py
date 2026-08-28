@@ -31,7 +31,7 @@ class LabelsError(Exception):
 def _validar_quantidade(quantidade) -> int:
     try:
         quantidade = int(quantidade)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         raise LabelsError("Quantidade de etiquetas inválida.") from None
     if quantidade < 1 or quantidade > QUANTIDADE_MAXIMA:
         raise LabelsError(

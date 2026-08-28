@@ -1,0 +1,41 @@
+# PDV — serviço systemd do gunicorn (produção, Debian)
+#
+# Instale com o script deploy/setup-pdv.sh (ele valida a porta e faz
+# backup antes de instalar). Ajustes manuais: porta em PDV_PORT no
+# /opt/pdv/.env (padrão 8001).
+
+[Unit]
+Description=PDV — gunicorn (Django)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=exec
+User=pdv
+Group=pdv
+WorkingDirectory=/opt/pdv
+EnvironmentFile=/opt/pdv/.env
+# Segurança: nada de escrita além dos diretórios da aplicação.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/pdv
+ExecStart=/opt/pdv/.venv/bin/gunicorn config.wsgi:application \
+    --bind 127.0.0.1:${PDV_PORT} \
+    --workers 3 \
+    --threads 2 \
+    --timeout 60 \
+    --graceful-timeout 30 \
+    --max-requests 1200 \
+    --max-requests-jitter 100 \
+    --access-logfile - \
+    --error-logfile -
+Restart=always
+RestartSec=3
+# Não manter o processo em foreground sem logs; journald captura tudo.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

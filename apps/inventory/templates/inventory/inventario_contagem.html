@@ -1,7 +1,8 @@
-{% extends "app_base.html" %}
-{% block app_title %}Contagem — {{ inventario.descricao }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Contagem — {{ inventario.descricao }}{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <h1 class="text-2xl font-bold text-slate-900 mb-1">Contagem física</h1>
 <p class="text-sm text-slate-500 mb-6">
     {{ inventario.descricao }} · deixe em branco os itens não contados.
@@ -27,7 +28,7 @@
                             <input type="number" step="0.001" min="0"
                                    name="contagem_{{ item.uuid }}"
                                    value="{{ item.quantidade_contada|default:'' }}"
-                                   class="w-32 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                                   class="w-32 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none">
                         </td>
                     </tr>
                 {% empty %}
@@ -38,7 +39,8 @@
     </div>
     <div class="flex items-center justify-end gap-3">
         <a href="{% url 'inventory:inventario_detalhe' inventario.uuid %}" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Voltar</a>
-        <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Salvar contagem</button>
+        <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Salvar contagem</button>
     </div>
 </form>
+</div>
 {% endblock %}

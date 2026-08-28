@@ -13,6 +13,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.customers.models import Cliente
 from apps.financial.models import FormaPagamento
 from apps.printing.models import ConfiguracaoImpressao, PrintJob
 from apps.printing.services import (
@@ -21,7 +22,7 @@ from apps.printing.services import (
     criar_print_job,
     reativar_print_job,
 )
-from apps.products.models import Produto
+from apps.products.models import Categoria, Produto
 
 from .forms import (
     AbrirCaixaForm,
@@ -36,8 +37,11 @@ from .services import (
     abrir_venda,
     adicionar_item,
     adicionar_pagamento,
+    alterar_quantidade_item,
     aplicar_desconto,
+    associar_cliente,
     cancelar_venda,
+    definir_cliente_nome,
     fechar_caixa,
     finalizar_venda,
     remover_item,
@@ -46,6 +50,7 @@ from .services import (
 )
 
 ITENS_POR_PAGINA = 25
+PRODUTOS_POR_PAGINA_PDV = 9
 
 
 def _tenant_atual(request, modulo="PDV"):
@@ -63,6 +68,12 @@ def _decimal(valor):
         return Decimal(str(valor).replace(",", "."))
     except (InvalidOperation, TypeError, ValueError):
         return None
+
+
+def _quantidade_input(valor):
+    """Quantidade no formato aceito pelo backend (vírgula decimal)."""
+    texto = str(valor.normalize())
+    return texto.replace(".", ",")
 
 
 # ---------------------------------------------------------------------------
@@ -159,17 +170,42 @@ def venda_tela(request, uuid):
 
     formas = FormaPagamento.objects.for_tenant(tenant).filter(ativo=True)
     pago = sum(p.valor for p in venda.pagamentos.all())
+
+    itens = list(venda.itens.select_related("produto"))
+    for item in itens:
+        item.quantidade_mais = _quantidade_input(item.quantidade + 1)
+        item.quantidade_menos = _quantidade_input(item.quantidade - 1)
+
+    categoria_uuid = request.GET.get("cat", "").strip()
+    produtos = Produto.objects.for_tenant(tenant).filter(ativo=True)
+    if categoria_uuid:
+        produtos = produtos.filter(categoria__uuid=categoria_uuid)
+    produtos = produtos.select_related("categoria", "estoque").order_by("nome")
+    pagina_produtos = Paginator(produtos, PRODUTOS_POR_PAGINA_PDV).get_page(
+        request.GET.get("page")
+    )
+    faixa_paginacao = (
+        pagina_produtos.paginator.get_elided_page_range(pagina_produtos.number)
+        if pagina_produtos.paginator.num_pages > 1
+        else []
+    )
+
     return render(
         request,
         "sales/venda.html",
         {
             "venda": venda,
-            "itens": venda.itens.select_related("produto"),
+            "itens": itens,
             "pagamentos": venda.pagamentos.select_related("forma_pagamento"),
             "formas": formas,
             "pago": pago,
             "falta": venda.total - pago,
             "pagamento_form": PagamentoVendaForm(tenant=tenant),
+            "categorias": Categoria.objects.for_tenant(tenant).filter(ativo=True),
+            "categoria_selecionada": categoria_uuid,
+            "produtos": pagina_produtos,
+            "faixa_paginacao": faixa_paginacao,
+            "clientes": Cliente.objects.for_tenant(tenant).filter(ativo=True),
         },
     )
 
@@ -192,11 +228,31 @@ def _executar_acao_venda(request, venda, acao):
             ItemVenda, venda=venda, uuid=request.POST.get("item", "")
         )
         remover_item(venda, item, usuario=usuario)
+    elif acao == "alterar_item":
+        item = get_object_or_404(
+            ItemVenda, venda=venda, uuid=request.POST.get("item", "")
+        )
+        quantidade = _decimal(request.POST.get("quantidade"))
+        if quantidade is None:
+            raise SalesError("Quantidade inválida.")
+        alterar_quantidade_item(venda, item, quantidade, usuario=usuario)
     elif acao == "desconto":
         desconto = _decimal(request.POST.get("desconto"))
         if desconto is None:
             raise SalesError("Desconto inválido.")
         aplicar_desconto(venda, desconto, usuario=usuario)
+    elif acao == "cliente":
+        cliente_uuid = request.POST.get("cliente", "").strip()
+        cliente_nome = request.POST.get("cliente_nome", "").strip()
+        if cliente_uuid:
+            cliente = Cliente.objects.for_tenant(venda.tenant).filter(
+                uuid=cliente_uuid
+            ).first()
+            if cliente is None:
+                raise SalesError("Cliente não encontrado neste tenant.")
+            associar_cliente(venda, cliente, usuario=usuario)
+        else:
+            definir_cliente_nome(venda, cliente_nome, usuario=usuario)
     elif acao == "pagamento":
         pagamento_form = PagamentoVendaForm(request.POST, tenant=venda.tenant)
         valor = _decimal(request.POST.get("valor"))

@@ -1,0 +1,78 @@
+name: build-windows-agent
+
+# Gera o executável Windows do Local Print Agent (instalação zero no
+# cliente) e publica como asset da release. Disparado por tag
+# agent-v* (ex.: agent-v0.2.0) ou manualmente (workflow_dispatch).
+
+on:
+  push:
+    tags:
+      - "agent-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências e pyinstaller
+        shell: pwsh
+        run: |
+          cd local-print-agent
+          python -m pip install --upgrade pip
+          pip install .
+          pip install pyinstaller
+
+      - name: Gerar executável (onefile)
+        shell: pwsh
+        run: |
+          cd local-print-agent
+          pyinstaller --onefile --name print-agent launcher.py
+
+      - name: Smoke test do executável
+        shell: pwsh
+        run: |
+          ./local-print-agent/dist/print-agent.exe -h
+
+      - name: Teste REAL do executável (pareamento contra servidor simulado)
+        shell: pwsh
+        run: |
+          Start-Process -NoNewWindow python -ArgumentList "local-print-agent/tests/mock_pair_server.py"
+          Start-Sleep -Seconds 2
+          $env:PRINT_AGENT_SERVER_URL = "http://127.0.0.1:8791"
+          $env:PRINT_AGENT_PAIR_CODE = "TESTE123"
+          $env:PRINT_AGENT_STATE_DIR = "$env:USERPROFILE\.print-agent-ci"
+          ./local-print-agent/dist/print-agent.exe pair
+          if (-not (Test-Path "$env:USERPROFILE\.print-agent-ci\credencial.json")) {
+            Write-Error "Credencial não foi salva — pareamento falhou no exe."
+            exit 1
+          }
+          $credencial = Get-Content "$env:USERPROFILE\.print-agent-ci\credencial.json" | ConvertFrom-Json
+          if ($credencial.token -ne "token-de-teste-e2e") {
+            Write-Error "Credencial incorreta no arquivo."
+            exit 1
+          }
+          Write-Host "PAREAMENTO E2E DO EXE: OK"
+
+      - name: Publicar release com o executável
+        if: startsWith(github.ref, 'refs/tags/agent-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            local-print-agent/dist/print-agent.exe
+          generate_release_notes: true
+
+      - name: Artefato para workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: print-agent-windows
+          path: local-print-agent/dist/print-agent.exe

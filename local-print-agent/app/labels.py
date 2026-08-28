@@ -35,7 +35,7 @@ def _dimensoes(payload):
 def _dpi(payload):
     try:
         return int(_dimensoes(payload).get("dpi", DPI_PADRAO))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return DPI_PADRAO
 
 

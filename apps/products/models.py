@@ -18,6 +18,11 @@ from apps.core.tenancy import TenantAwareModel
 ZERO = Decimal("0")
 
 
+def _caminho_imagem_produto(instance, filename):
+    """Imagem do produto isolada por tenant no armazenamento."""
+    return f"produtos/{instance.tenant_id}/{instance.uuid}/{filename}"
+
+
 class Categoria(TenantAwareModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     tenant = models.ForeignKey(
@@ -107,6 +112,12 @@ class Produto(TenantAwareModel):
         related_name="produtos",
         verbose_name="tenant",
     )
+    codigo = models.CharField(
+        "código",
+        max_length=20,
+        blank=True,
+        help_text="Código interno gerado automaticamente pelo sistema.",
+    )
     nome = models.CharField("nome", max_length=200)
     sku = models.CharField("SKU", max_length=60, blank=True)
     codigo_barras = models.CharField(
@@ -173,6 +184,47 @@ class Produto(TenantAwareModel):
     )
     ativo = models.BooleanField("ativo", default=True, db_index=True)
     observacao = models.TextField("observação", blank=True)
+    ncm = models.CharField(
+        "NCM",
+        max_length=8,
+        blank=True,
+        help_text="Nomenclatura Comum do Mercosul (8 dígitos).",
+    )
+    cest = models.CharField(
+        "CEST",
+        max_length=7,
+        blank=True,
+        help_text="Código Especificador da Substituição Tributária (7 dígitos).",
+    )
+    cfop = models.CharField(
+        "CFOP",
+        max_length=4,
+        blank=True,
+        help_text="Código Fiscal de Operações e Prestações (4 dígitos).",
+    )
+    origem = models.CharField(
+        "origem da mercadoria",
+        max_length=1,
+        choices=[
+            ("0", "0 — Nacional"),
+            ("1", "1 — Estrangeira — importação direta"),
+            ("2", "2 — Estrangeira — adquirida no mercado interno"),
+            ("3", "3 — Nacional — conteúdo de importação superior a 40%"),
+            ("4", "4 — Nacional — produção conforme processos básicos"),
+            ("5", "5 — Nacional — conteúdo de importação inferior a 40%"),
+            ("6", "6 — Estrangeira — importação direta sem similar nacional"),
+            ("7", "7 — Estrangeira — mercado interno sem similar nacional"),
+            ("8", "8 — Nacional — conteúdo de importação superior a 70%"),
+        ],
+        default="0",
+        blank=True,
+    )
+    imagem = models.FileField(
+        "imagem do produto",
+        upload_to=_caminho_imagem_produto,
+        blank=True,
+        help_text="PNG, JPG ou WEBP até 5MB.",
+    )
     data_cadastro = models.DateTimeField("criado em", auto_now_add=True)
     data_atualizacao = models.DateTimeField("atualizado em", auto_now=True)
 
@@ -181,6 +233,13 @@ class Produto(TenantAwareModel):
         verbose_name_plural = "produtos"
         ordering = ["nome"]
         constraints = [
+            # Código interno é opcional; quando informado, é único dentro do
+            # tenant.
+            models.UniqueConstraint(
+                fields=["tenant", "codigo"],
+                condition=~Q(codigo=""),
+                name="unique_produto_codigo_per_tenant",
+            ),
             # SKU é opcional; quando informado, é único dentro do tenant.
             models.UniqueConstraint(
                 fields=["tenant", "sku"],
@@ -200,7 +259,19 @@ class Produto(TenantAwareModel):
             models.Index(fields=["tenant", "nome"]),
             models.Index(fields=["tenant", "ativo"]),
             models.Index(fields=["tenant", "codigo_barras"]),
+            models.Index(fields=["tenant", "codigo"]),
         ]
 
     def __str__(self):
         return self.nome
+
+    @property
+    def margem_lucro(self):
+        """Margem sobre o preço de venda, em percentual (calculada)."""
+        if not self.preco_venda or self.preco_venda <= ZERO:
+            return ZERO
+        return (
+            (self.preco_venda - self.preco_custo)
+            / self.preco_venda
+            * Decimal("100")
+        ).quantize(Decimal("0.01"))

@@ -1,13 +1,14 @@
-{% extends "app_base.html" %}
-{% block app_title %}{% if tipo == 'entrada' %}Entradas{% else %}Saídas{% endif %}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}{% if tipo == 'entrada' %}Entradas{% else %}Saídas{% endif %}{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <h1 class="text-2xl font-bold text-slate-900">{% if tipo == 'entrada' %}Entradas{% else %}Saídas{% endif %}</h1>
     {% if tipo == 'entrada' %}
-        <a href="{% url 'financial:entrada_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova entrada</a>
+        <a href="{% url 'financial:entrada_nova' %}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Nova entrada</a>
     {% else %}
-        <a href="{% url 'financial:saida_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova saída</a>
+        <a href="{% url 'financial:saida_nova' %}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Nova saída</a>
     {% endif %}
 </div>
 
@@ -38,9 +39,9 @@
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3">
                         {% if tipo == 'entrada' %}
-                            <a href="{% url 'financial:entrada_detalhe' lancamento.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ lancamento.descricao }}</a>
+                            <a href="{% url 'financial:entrada_detalhe' lancamento.uuid %}" class="font-medium text-brand-600 hover:text-brand-800">{{ lancamento.descricao }}</a>
                         {% else %}
-                            <a href="{% url 'financial:saida_detalhe' lancamento.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ lancamento.descricao }}</a>
+                            <a href="{% url 'financial:saida_detalhe' lancamento.uuid %}" class="font-medium text-brand-600 hover:text-brand-800">{{ lancamento.descricao }}</a>
                         {% endif %}
                     </td>
                     <td class="px-4 py-3 font-medium">{{ lancamento.valor }}</td>
@@ -50,7 +51,7 @@
                         {% elif lancamento.status == 'CANCELADA' %}
                             <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
                         {% else %}
-                            <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">{{ lancamento.get_status_display }}</span>
+                            <span class="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">{{ lancamento.get_status_display }}</span>
                         {% endif %}
                         {% if lancamento.vencida %}<span class="ml-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Vencida</span>{% endif %}
                     </td>
@@ -70,9 +71,10 @@
 
 {% if pagina.has_other_pages %}
     <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
-        {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-indigo-600">&laquo; Anterior</a>{% else %}<span></span>{% endif %}
+        {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-brand-600">&laquo; Anterior</a>{% else %}<span></span>{% endif %}
         <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-        {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-indigo-600">Próxima &raquo;</a>{% else %}<span></span>{% endif %}
+        {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}&status={{ status }}&q={{ busca }}" class="hover:text-brand-600">Próxima &raquo;</a>{% else %}<span></span>{% endif %}
     </nav>
 {% endif %}
+</div>
 {% endblock %}

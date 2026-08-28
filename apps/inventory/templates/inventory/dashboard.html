@@ -1,11 +1,8 @@
-{% extends "app_base.html" %}
-{% block app_title %}Estoque{% endblock %}
-{% block nav_extra %}
-<a href="{% url 'products:lista' %}" class="hover:text-indigo-600 whitespace-nowrap">Produtos</a>
-<a href="{% url 'inventory:dashboard' %}" class="text-indigo-600 font-medium whitespace-nowrap">Estoque</a>
-{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Estoque{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-slate-900">Estoque</h1>
@@ -84,5 +81,6 @@
             {% endfor %}
         </ul>
     </aside>
+</div>
 </div>
 {% endblock %}

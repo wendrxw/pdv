@@ -1,7 +1,8 @@
-{% extends "app_base.html" %}
-{% block app_title %}Movimentações{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Movimentações{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <h1 class="text-2xl font-bold text-slate-900 mb-6">Movimentações de estoque</h1>
 
 <form method="get" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -56,12 +57,13 @@
 {% if pagina.has_other_pages %}
     <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
         {% if pagina.has_previous %}
-            <a href="?page={{ pagina.previous_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-indigo-600">&laquo; Anterior</a>
+            <a href="?page={{ pagina.previous_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-brand-600">&laquo; Anterior</a>
         {% else %}<span></span>{% endif %}
         <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
         {% if pagina.has_next %}
-            <a href="?page={{ pagina.next_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-indigo-600">Próxima &raquo;</a>
+            <a href="?page={{ pagina.next_page_number }}&tipo={{ tipo_selecionado }}&produto={{ produto_selecionado }}" class="hover:text-brand-600">Próxima &raquo;</a>
         {% else %}<span></span>{% endif %}
     </nav>
 {% endif %}
+</div>
 {% endblock %}

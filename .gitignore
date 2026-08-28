@@ -8,3 +8,26 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Segredos — nunca versionar
+.env
+*.env
+!deploy/pdv.env.example
+
+# Banco de dados local (dev)
+db.sqlite3
+*.sqlite3
+
+# Arquivos de runtime/upload
+media/
+staticfiles/
+.django-cache/
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+# Credenciais de acesso ao servidor (nunca versionar)
+deploy/servidor.ssh.env
+.deploy-version

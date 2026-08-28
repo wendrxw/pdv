@@ -1,15 +1,12 @@
-{% extends "app_base.html" %}
-{% block app_title %}Etiquetas{% endblock %}
-{% block nav_extra %}
-<a href="{% url 'labels:selecao' %}" class="hover:text-indigo-600 whitespace-nowrap">Etiquetas</a>
-<a href="{% url 'labels:config' %}" class="hover:text-indigo-600 whitespace-nowrap">Configuração</a>
-{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Etiquetas{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="max-w-6xl">
     <div class="flex items-center justify-between mb-2">
         <h1 class="text-2xl font-bold text-slate-900">Preparar impressão de etiquetas</h1>
-        <a href="{% url 'products:lista' %}" class="text-sm text-indigo-600 hover:text-indigo-800">← Voltar aos produtos</a>
+        <a href="{% url 'products:lista' %}" class="text-sm text-brand-600 hover:text-brand-800">← Voltar aos produtos</a>
     </div>
     <p class="text-sm text-slate-500 mb-6">
         {{ config.nome_impressora }} · bobina com <strong>2 etiquetas por fileira</strong>.
@@ -24,8 +21,8 @@
                     {% for produto in produtos %}
                         <div class="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2"
                              data-produto data-uuid="{{ produto.uuid }}">
-                            <button type="button" class="botao-ordem text-slate-400 hover:text-indigo-600 text-xs" data-direcao="-1" title="Mover para cima">▲</button>
-                            <button type="button" class="botao-ordem text-slate-400 hover:text-indigo-600 text-xs" data-direcao="1" title="Mover para baixo">▼</button>
+                            <button type="button" class="botao-ordem text-slate-400 hover:text-brand-600 text-xs" data-direcao="-1" title="Mover para cima">▲</button>
+                            <button type="button" class="botao-ordem text-slate-400 hover:text-brand-600 text-xs" data-direcao="1" title="Mover para baixo">▼</button>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-slate-800 truncate">{{ produto.nome }}</p>
                                 <p class="text-xs text-slate-400">{{ produto.codigo_barras|default:"sem código de barras" }}</p>
@@ -58,19 +55,19 @@
             <div class="text-sm text-slate-600" id="resumo-confirmacao"></div>
             <div class="flex gap-3">
                 <a href="{% url 'products:lista' %}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancelar</a>
-                <button type="submit" id="botao-confirmar" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700">Confirmar impressão</button>
+                <button type="submit" id="botao-confirmar" class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700">Confirmar impressão</button>
             </div>
         </form>
     {% else %}
         <div class="bg-white rounded-xl border border-slate-200 p-10 text-center">
             <p class="text-slate-500 mb-4">Nenhum produto selecionado.</p>
-            <a href="{% url 'products:lista' %}" class="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Buscar produtos</a>
+            <a href="{% url 'products:lista' %}" class="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Buscar produtos</a>
         </div>
     {% endif %}
 
     <form method="post" action="{% url 'labels:calibrar' %}" class="mt-6">
         {% csrf_token %}
-        <button type="submit" class="text-sm text-slate-500 hover:text-indigo-600 underline">
+        <button type="submit" class="text-sm text-slate-500 hover:text-brand-600 underline">
             Calibrar etiquetas (impressão de teste de alinhamento)
         </button>
     </form>
@@ -236,4 +233,5 @@
     atualizarPreview();
 })();
 </script>
+</div>
 {% endblock %}

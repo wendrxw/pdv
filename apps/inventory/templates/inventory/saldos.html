@@ -1,12 +1,13 @@
-{% extends "app_base.html" %}
-{% block app_title %}Saldos de estoque{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Saldos de estoque{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <h1 class="text-2xl font-bold text-slate-900 mb-6">Saldos por produto</h1>
 
 <form method="get" class="mb-6 flex gap-2">
     <input type="text" name="q" value="{{ termo }}" placeholder="Buscar produto ou SKU"
-           class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+           class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
     <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Buscar</button>
 </form>
 
@@ -25,7 +26,7 @@
             {% for estoque in pagina %}
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3">
-                        <a href="{% url 'inventory:historico_produto' estoque.produto.uuid %}" class="text-indigo-600 hover:text-indigo-800">
+                        <a href="{% url 'inventory:historico_produto' estoque.produto.uuid %}" class="text-brand-600 hover:text-brand-800">
                             {{ estoque.produto.nome }}
                         </a>
                     </td>
@@ -52,12 +53,13 @@
 {% if pagina.has_other_pages %}
     <nav class="mt-4 flex items-center justify-between text-sm text-slate-600">
         {% if pagina.has_previous %}
-            <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}" class="hover:text-indigo-600">&laquo; Anterior</a>
+            <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}" class="hover:text-brand-600">&laquo; Anterior</a>
         {% else %}<span></span>{% endif %}
         <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
         {% if pagina.has_next %}
-            <a href="?page={{ pagina.next_page_number }}&q={{ termo }}" class="hover:text-indigo-600">Próxima &raquo;</a>
+            <a href="?page={{ pagina.next_page_number }}&q={{ termo }}" class="hover:text-brand-600">Próxima &raquo;</a>
         {% else %}<span></span>{% endif %}
     </nav>
 {% endif %}
+</div>
 {% endblock %}

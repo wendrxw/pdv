@@ -1,123 +1,359 @@
-{% extends "app_base.html" %}
-{% block app_title %}{{ titulo }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}{{ titulo }}{% endblock %}
 
-{% block app_content %}
-<div class="max-w-3xl">
-    <h1 class="text-2xl font-bold text-slate-900 mb-6">{{ titulo }}</h1>
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 
-    <form method="post" class="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+    <!-- Cabeçalho -->
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Cadastro de Produto</h1>
+            <nav class="mt-1 text-sm text-slate-400">
+                <a href="{% url 'products:lista' %}" class="transition-colors hover:text-blue-600">Produtos</a>
+                <span class="mx-1">›</span>
+                <span class="text-slate-600">Cadastro de Produto</span>
+            </nav>
+        </div>
+        <a href="{% url 'products:lista' %}"
+           class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+            {% include "partials/icon.html" with name="arrow-left" class="h-4 w-4" %}
+            Voltar para lista
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="form-produto">
         {% csrf_token %}
 
         {% if form.non_field_errors %}
-            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 {{ form.non_field_errors }}
             </div>
         {% endif %}
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.nome.label }}</label>
-                {{ form.nome }}
-                {% if form.nome.errors %}<p class="mt-1 text-xs text-red-600">{{ form.nome.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.sku.label }}</label>
-                {{ form.sku }}
-                {% if form.sku.errors %}<p class="mt-1 text-xs text-red-600">{{ form.sku.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.codigo_barras.label }}</label>
-                <div class="flex gap-2">
-                    {{ form.codigo_barras }}
-                    <button type="button" id="btn-gerar-codigo"
-                            class="whitespace-nowrap rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">
-                        Gerar código
+        <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-10">
+
+            <!-- Coluna esquerda (~70%) -->
+            <div class="space-y-6 lg:col-span-7">
+
+                <!-- Informações básicas -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-5 text-base font-bold text-slate-900">Informações básicas</h2>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Código do produto</label>
+                            <input type="text" disabled value="{% if produto and produto.codigo %}{{ produto.codigo }}{% else %}Automático{% endif %}"
+                                   class="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Código de barras (EAN)</label>
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    {{ form.codigo_barras }}
+                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                                        {% include "partials/icon.html" with name="barcode" class="h-4 w-4" %}
+                                    </span>
+                                </div>
+                                <button type="button" id="btn-gerar-codigo"
+                                        class="shrink-0 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100">
+                                    Gerar código
+                                </button>
+                            </div>
+                            {% if form.codigo_barras.errors %}<p class="mt-1 text-xs text-red-600">{{ form.codigo_barras.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Nome do produto <span class="text-red-500">*</span></label>
+                            {{ form.nome }}
+                            {% if form.nome.errors %}<p class="mt-1 text-xs text-red-600">{{ form.nome.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Categoria <span class="text-red-500">*</span></label>
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}<p class="mt-1 text-xs text-red-600">{{ form.categoria.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Marca</label>
+                            {{ form.marca }}
+                            {% if form.marca.errors %}<p class="mt-1 text-xs text-red-600">{{ form.marca.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Unidade <span class="text-red-500">*</span></label>
+                            {{ form.unidade_medida }}
+                            {% if form.unidade_medida.errors %}<p class="mt-1 text-xs text-red-600">{{ form.unidade_medida.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Descrição</label>
+                            {{ form.descricao }}
+                            <p class="mt-1 text-right text-xs text-slate-400"><span id="contador-descricao">0</span>/255</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Preços e estoque -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-5 text-base font-bold text-slate-900">Preços e estoque</h2>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Preço de custo (R$)</label>
+                            {{ form.preco_custo }}
+                            {% if form.preco_custo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.preco_custo.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Preço de venda (R$) <span class="text-red-500">*</span></label>
+                            {{ form.preco_venda }}
+                            {% if form.preco_venda.errors %}<p class="mt-1 text-xs text-red-600">{{ form.preco_venda.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Margem de lucro (%)</label>
+                            <input type="text" id="margem-lucro" disabled value="0,00"
+                                   class="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Estoque atual</label>
+                            <input type="text" disabled value="{{ estoque_atual|default:'0' }}"
+                                   class="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Estoque mínimo</label>
+                            {{ form.estoque_minimo }}
+                            {% if form.estoque_minimo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estoque_minimo.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Estoque máximo</label>
+                            {{ form.estoque_maximo }}
+                            {% if form.estoque_maximo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estoque_maximo.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Informações fiscais (recolhível) -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <button type="button" id="botao-fiscal"
+                            class="flex w-full items-center justify-between p-6 text-left transition-colors hover:bg-slate-50">
+                        <span class="text-base font-bold text-slate-900">Informações fiscais <span class="ml-1 text-xs font-medium text-slate-400">(opcional)</span></span>
+                        <span id="chevron-fiscal" class="text-slate-400 transition-transform">{% include "partials/icon.html" with name="chevron-down" class="h-5 w-5" %}</span>
                     </button>
-                </div>
-                {% if form.codigo_barras.errors %}<p class="mt-1 text-xs text-red-600">{{ form.codigo_barras.errors.0 }}</p>{% endif %}
+                    <div id="conteudo-fiscal" class="hidden border-t border-slate-100 px-6 py-5">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">SKU</label>
+                                {{ form.sku }}
+                                {% if form.sku.errors %}<p class="mt-1 text-xs text-red-600">{{ form.sku.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">Tamanho</label>
+                                {{ form.tamanho }}
+                                {% if form.tamanho.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tamanho.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">Origem da mercadoria</label>
+                                {{ form.origem }}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">CEST</label>
+                                {{ form.cest }}
+                                {% if form.cest.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cest.errors.0 }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-slate-700">CFOP</label>
+                                {{ form.cfop }}
+                                {% if form.cfop.errors %}<p class="mt-1 text-xs text-red-600">{{ form.cfop.errors.0 }}</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.tamanho.label }}</label>
-                {{ form.tamanho }}
-                {% if form.tamanho.errors %}<p class="mt-1 text-xs text-red-600">{{ form.tamanho.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.categoria.label }}</label>
-                {{ form.categoria }}
-                {% if form.categoria.errors %}<p class="mt-1 text-xs text-red-600">{{ form.categoria.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.marca.label }}</label>
-                {{ form.marca }}
-                {% if form.marca.errors %}<p class="mt-1 text-xs text-red-600">{{ form.marca.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.unidade_medida.label }}</label>
-                {{ form.unidade_medida }}
-            </div>
-            <div></div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.preco_custo.label }}</label>
-                {{ form.preco_custo }}
-                {% if form.preco_custo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.preco_custo.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.preco_venda.label }}</label>
-                {{ form.preco_venda }}
-                {% if form.preco_venda.errors %}<p class="mt-1 text-xs text-red-600">{{ form.preco_venda.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.estoque_minimo.label }}</label>
-                {{ form.estoque_minimo }}
-                {% if form.estoque_minimo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estoque_minimo.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.estoque_maximo.label }}</label>
-                {{ form.estoque_maximo }}
-                {% if form.estoque_maximo.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estoque_maximo.errors.0 }}</p>{% endif %}
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.descricao.label }}</label>
-                {{ form.descricao }}
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.observacao.label }}</label>
-                {{ form.observacao }}
-            </div>
-            <div class="flex items-center gap-2">
-                {{ form.ativo }}
-                <label class="text-sm font-medium text-slate-700">{{ form.ativo.label }}</label>
+
+            <!-- Coluna direita (~30%) -->
+            <div class="space-y-6 lg:col-span-3">
+
+                <!-- Imagem do produto -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-4 text-base font-bold text-slate-900">Imagem do produto</h2>
+                    <label id="area-upload" for="id_imagem"
+                           class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center transition-colors hover:border-blue-400 hover:bg-blue-50/40">
+                        <span id="preview-imagem" class="hidden relative mb-3 h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            <img id="preview-img" src="" alt="Pré-visualização" class="h-full w-full object-cover">
+                        </span>
+                        {% if produto and produto.imagem %}
+                            <img id="imagem-atual" src="{{ produto.imagem.url }}" alt="{{ produto.nome }}"
+                                 class="mb-3 h-28 w-28 rounded-xl border border-slate-200 object-cover">
+                        {% endif %}
+                        <span id="icone-upload" class="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                            {% include "partials/icon.html" with name="upload" class="h-6 w-6" %}
+                        </span>
+                        <span class="text-sm font-semibold text-slate-700">Clique para selecionar</span>
+                        <span class="mt-0.5 text-xs text-slate-400">ou arraste a imagem para cá</span>
+                        <span class="mt-3 rounded-md bg-white px-2 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-slate-200">PNG, JPG ou WEBP</span>
+                        <span class="mt-1 text-[11px] text-slate-400">Tamanho máximo: 5MB</span>
+                    </label>
+                    <input type="file" id="id_imagem" name="imagem" accept="image/png,image/jpeg,image/webp" class="hidden">
+                    {% if form.imagem.errors %}<p class="mt-2 text-xs text-red-600">{{ form.imagem.errors.0 }}</p>{% endif %}
+                </section>
+
+                <!-- Outras informações -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-4 text-base font-bold text-slate-900">Outras informações</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Status <span class="text-red-500">*</span></label>
+                            {{ form.ativo }}
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Situação tributária (NCM)</label>
+                            <div class="relative">
+                                {{ form.ncm }}
+                                <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                                    {% include "partials/icon.html" with name="search" class="h-4 w-4" %}
+                                </span>
+                            </div>
+                            {% if form.ncm.errors %}<p class="mt-1 text-xs text-red-600">{{ form.ncm.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="col-span-2">
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Observações</label>
+                            {{ form.observacao }}
+                            <p class="mt-1 text-right text-xs text-slate-400"><span id="contador-observacao">0</span>/255</p>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-            <a href="{% url 'products:lista' %}" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancelar</a>
-            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Salvar</button>
+        <!-- Ações -->
+        <div class="mt-6 flex items-center justify-end gap-3">
+            <button type="reset" id="btn-limpar"
+                    class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+                {% include "partials/icon.html" with name="trash" class="h-4 w-4" %}
+                Limpar
+            </button>
+            <button type="submit"
+                    class="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
+                {% include "partials/icon.html" with name="save" class="h-4 w-4" %}
+                Salvar produto
+            </button>
         </div>
     </form>
 </div>
+{% endblock %}
 
+{% block shell_scripts %}
 <script>
-    (function () {
-        var botao = document.getElementById("btn-gerar-codigo");
-        if (!botao) return;
-        botao.addEventListener("click", function () {
+(function () {
+    var form = document.getElementById("form-produto");
+
+    // Contadores de caracteres.
+    function configurarContador(campoId, contadorId) {
+        var campo = document.getElementById(campoId);
+        var contador = document.getElementById(contadorId);
+        if (!campo || !contador) return;
+        function atualizar() {
+            var tamanho = (campo.value || "").length;
+            contador.textContent = Math.min(tamanho, 255);
+        }
+        campo.addEventListener("input", atualizar);
+        atualizar();
+    }
+    configurarContador("id_descricao", "contador-descricao");
+    configurarContador("id_observacao", "contador-observacao");
+
+    // Margem de lucro calculada.
+    var custo = document.getElementById("id_preco_custo");
+    var venda = document.getElementById("id_preco_venda");
+    var margem = document.getElementById("margem-lucro");
+    function atualizarMargem() {
+        var c = parseFloat((custo.value || "0").replace(",", ".")) || 0;
+        var v = parseFloat((venda.value || "0").replace(",", ".")) || 0;
+        var valor = v > 0 ? ((v - c) / v) * 100 : 0;
+        margem.value = valor.toFixed(2).replace(".", ",");
+    }
+    if (custo && venda && margem) {
+        custo.addEventListener("input", atualizarMargem);
+        venda.addEventListener("input", atualizarMargem);
+        atualizarMargem();
+    }
+
+    // Card fiscal recolhível.
+    var botaoFiscal = document.getElementById("botao-fiscal");
+    var conteudoFiscal = document.getElementById("conteudo-fiscal");
+    var chevronFiscal = document.getElementById("chevron-fiscal");
+    if (botaoFiscal) {
+        botaoFiscal.addEventListener("click", function () {
+            conteudoFiscal.classList.toggle("hidden");
+            chevronFiscal.classList.toggle("rotate-180");
+        });
+    }
+
+    // Upload de imagem com drag-and-drop.
+    var inputImagem = document.getElementById("id_imagem");
+    var areaUpload = document.getElementById("area-upload");
+    var preview = document.getElementById("preview-imagem");
+    var previewImg = document.getElementById("preview-img");
+    var iconeUpload = document.getElementById("icone-upload");
+    var imagemAtual = document.getElementById("imagem-atual");
+
+    function mostrarPreview(arquivo) {
+        if (!arquivo) return;
+        var leitor = new FileReader();
+        leitor.onload = function (evento) {
+            previewImg.src = evento.target.result;
+            preview.classList.remove("hidden");
+            iconeUpload.classList.add("hidden");
+            if (imagemAtual) imagemAtual.classList.add("hidden");
+        };
+        leitor.readAsDataURL(arquivo);
+    }
+    if (inputImagem) {
+        inputImagem.addEventListener("change", function () {
+            mostrarPreview(inputImagem.files[0]);
+        });
+        ["dragenter", "dragover"].forEach(function (evento) {
+            areaUpload.addEventListener(evento, function (e) {
+                e.preventDefault();
+                areaUpload.classList.add("border-blue-500", "bg-blue-50");
+            });
+        });
+        ["dragleave", "drop"].forEach(function (evento) {
+            areaUpload.addEventListener(evento, function (e) {
+                e.preventDefault();
+                areaUpload.classList.remove("border-blue-500", "bg-blue-50");
+            });
+        });
+        areaUpload.addEventListener("drop", function (e) {
+            if (e.dataTransfer.files.length) {
+                inputImagem.files = e.dataTransfer.files;
+                mostrarPreview(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    // Limpar: reseta o formulário e a pré-visualização.
+    var botaoLimpar = document.getElementById("btn-limpar");
+    if (botaoLimpar) {
+        botaoLimpar.addEventListener("click", function () {
+            setTimeout(function () {
+                if (preview) preview.classList.add("hidden");
+                if (iconeUpload) iconeUpload.classList.remove("hidden");
+                if (imagemAtual) imagemAtual.classList.remove("hidden");
+                atualizarMargem();
+            }, 0);
+        });
+    }
+
+    // Geração de código de barras EAN-13 interno.
+    var botaoGerar = document.getElementById("btn-gerar-codigo");
+    if (botaoGerar) {
+        botaoGerar.addEventListener("click", function () {
             fetch("{% url 'products:gerar_codigo_barras' %}", {
                 method: "POST",
                 headers: {
-                    "X-CSRFToken": document.querySelector(
-                        '[name=csrfmiddlewaretoken]'
-                    ).value
+                    "X-CSRFToken": form.querySelector('[name=csrfmiddlewaretoken]').value
                 }
             })
                 .then(function (resposta) { return resposta.json(); })
                 .then(function (dados) {
-                    if (dados.codigo) {
-                        var campo = document.getElementById("id_codigo_barras");
-                        campo.value = dados.codigo;
-                    }
+                    if (dados.codigo) document.getElementById("id_codigo_barras").value = dados.codigo;
                 });
         });
-    })();
+    }
+})();
 </script>
 {% endblock %}

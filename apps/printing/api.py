@@ -11,6 +11,7 @@ máquina — e nunca expõem o dispositivo /dev/usb/lp0.
 import json
 import time
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
@@ -39,11 +40,23 @@ def _corpo(request) -> dict:
     try:
         dados = json.loads(request.body or b"{}")
         return dados if isinstance(dados, dict) else {}
-    except json.JSONDecodeError, UnicodeDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return {}
 
 
 def _ip(request) -> str:
+    """IP real do cliente para o throttle.
+
+    Atrás do Cloudflare Tunnel + Nginx TODAS as requisições chegam de
+    127.0.0.1 — sem o X-Forwarded-For o throttle por IP agruparia todos
+    os clientes no mesmo balde (e qualquer cliente bloqueia os demais).
+    O cabeçalho só é confiado quando PDV_BEHIND_PROXY está ativo (o
+    gunicorn nunca é exposto diretamente).
+    """
+    if getattr(settings, "PDV_BEHIND_PROXY", False):
+        encaminhado = request.headers.get("X-Forwarded-For", "")
+        if encaminhado:
+            return encaminhado.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "?")
 
 

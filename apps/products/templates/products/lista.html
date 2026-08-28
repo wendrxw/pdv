@@ -1,119 +1,123 @@
-{% extends "app_base.html" %}
-{% block app_title %}Produtos{% endblock %}
-{% block nav_extra %}
-<a href="{% url 'products:lista' %}" class="text-indigo-600 font-medium whitespace-nowrap">Produtos</a>
-<a href="{% url 'labels:selecao' %}" class="hover:text-indigo-600 whitespace-nowrap">Etiquetas</a>
-{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Produtos{% endblock %}
 
-{% block app_content %}
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-900">Produtos</h1>
-        <p class="text-sm text-slate-500">{{ pagina.paginator.count }} produto(s) cadastrado(s)</p>
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Produtos</h1>
+            <p class="mt-0.5 text-sm text-slate-500">{{ pagina.paginator.count }} produto(s) cadastrado(s)</p>
+        </div>
+        <a href="{% url 'products:novo' %}"
+           class="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+            {% include "partials/icon.html" with name="plus" class="h-4 w-4" %}
+            Novo produto
+        </a>
     </div>
-    <a href="{% url 'products:novo' %}"
-       class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-        Novo produto
-    </a>
-</div>
 
-<form method="get" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-3">
-    <input type="text" name="q" id="busca-produto" value="{{ termo }}"
-           placeholder="Buscar produto..." autocomplete="off"
-           class="md:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-    <select name="categoria" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-        <option value="">Todas as categorias</option>
-        {% for categoria in categorias %}
-            <option value="{{ categoria.pk }}" {% if categoria.pk|stringformat:"s" == categoria_selecionada %}selected{% endif %}>{{ categoria.nome }}</option>
-        {% endfor %}
-    </select>
-    <select name="marca" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-        <option value="">Todas as marcas</option>
-        {% for marca in marcas %}
-            <option value="{{ marca.pk }}" {% if marca.pk|stringformat:"s" == marca_selecionada %}selected{% endif %}>{{ marca.nome }}</option>
-        {% endfor %}
-    </select>
-    <div class="flex gap-2">
-        <select name="status" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+    <form method="get" class="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-6">
+        <input type="text" name="q" id="busca-produto" value="{{ termo }}"
+               placeholder="Buscar produto..." autocomplete="off"
+               class="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600">
+        <select name="categoria" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-600 focus:outline-none">
+            <option value="">Todas as categorias</option>
+            {% for categoria in categorias %}
+                <option value="{{ categoria.pk }}" {% if categoria.pk|stringformat:"s" == categoria_selecionada %}selected{% endif %}>{{ categoria.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="marca" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-600 focus:outline-none">
+            <option value="">Todas as marcas</option>
+            {% for marca in marcas %}
+                <option value="{{ marca.pk }}" {% if marca.pk|stringformat:"s" == marca_selecionada %}selected{% endif %}>{{ marca.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-600 focus:outline-none">
             <option value="">Todos</option>
             <option value="ativos" {% if status == 'ativos' %}selected{% endif %}>Ativos</option>
             <option value="inativos" {% if status == 'inativos' %}selected{% endif %}>Inativos</option>
         </select>
-        <button type="submit" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">Filtrar</button>
-    </div>
-</form>
-
-<div class="flex items-center justify-between gap-4 mb-4">
-    <p id="resumo-selecao" class="text-sm text-slate-500">Nenhum produto selecionado.</p>
-    <form method="post" action="{% url 'labels:selecao' %}" id="form-preparar-impressao">
-        {% csrf_token %}
-        <button type="submit" id="botao-preparar-impressao" disabled
-                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed">
-            Preparar impressão de etiquetas
-        </button>
+        <button type="submit" class="rounded-xl bg-navy-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-navy-800">Filtrar</button>
     </form>
-</div>
 
-<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-    <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-                <th class="px-4 py-3 w-10">
-                    <input type="checkbox" id="selecionar-todos" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                </th>
-                <th class="px-4 py-3">Produto</th>
-                <th class="px-4 py-3">Código de barras</th>
-                <th class="px-4 py-3">SKU</th>
-                <th class="px-4 py-3">Categoria</th>
-                <th class="px-4 py-3">Preço de venda</th>
-                <th class="px-4 py-3">Status</th>
-            </tr>
-        </thead>
-        <tbody id="tabela-produtos" class="divide-y divide-slate-100">
-            {% for produto in pagina %}
-                <tr class="hover:bg-slate-50" data-uuid="{{ produto.uuid }}">
-                    <td class="px-4 py-3">
-                        <input type="checkbox" class="produto-check rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="{{ produto.uuid }}">
-                    </td>
-                    <td class="px-4 py-3">
-                        <a href="{% url 'products:detalhe' produto.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ produto.nome }}</a>
-                        {% if not produto.ativo %}<span class="ml-2 text-xs text-red-600">(inativo)</span>{% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-slate-500">{{ produto.codigo_barras|default:"—" }}</td>
-                    <td class="px-4 py-3 text-slate-500">{{ produto.sku|default:"—" }}</td>
-                    <td class="px-4 py-3 text-slate-500">{{ produto.categoria|default:"—" }}</td>
-                    <td class="px-4 py-3">R$ {{ produto.preco_venda }}</td>
-                    <td class="px-4 py-3">
-                        {% if produto.ativo %}
-                            <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Ativo</span>
-                        {% else %}
-                            <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Inativo</span>
-                        {% endif %}
-                    </td>
+    <div class="mb-4 flex items-center justify-between gap-4">
+        <p id="resumo-selecao" class="text-sm text-slate-500">Nenhum produto selecionado.</p>
+        <form method="post" action="{% url 'labels:selecao' %}" id="form-preparar-impressao">
+            {% csrf_token %}
+            <button type="submit" id="botao-preparar-impressao" disabled
+                    class="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-400 transition-colors">
+                {% include "partials/icon.html" with name="receipt" class="h-4 w-4" %}
+                Preparar impressão de etiquetas
+            </button>
+        </form>
+    </div>
+
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                    <th class="w-10 px-4 py-3">
+                        <input type="checkbox" id="selecionar-todos" class="rounded border-slate-300 text-brand-600 focus:ring-brand-600">
+                    </th>
+                    <th class="px-4 py-3">Produto</th>
+                    <th class="px-4 py-3">Código de barras</th>
+                    <th class="px-4 py-3">SKU</th>
+                    <th class="px-4 py-3">Categoria</th>
+                    <th class="px-4 py-3">Preço de venda</th>
+                    <th class="px-4 py-3">Status</th>
                 </tr>
-            {% empty %}
-                <tr id="linha-vazia">
-                    <td colspan="7" class="px-4 py-10 text-center text-slate-400">
-                        Nenhum produto encontrado.
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody id="tabela-produtos" class="divide-y divide-slate-50">
+                {% for produto in pagina %}
+                    <tr class="transition-colors hover:bg-slate-50" data-uuid="{{ produto.uuid }}">
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="produto-check rounded border-slate-300 text-brand-600 focus:ring-brand-600" value="{{ produto.uuid }}">
+                        </td>
+                        <td class="px-4 py-3">
+                            <a href="{% url 'products:detalhe' produto.uuid %}" class="font-semibold text-brand-600 transition-colors hover:text-brand-700">{{ produto.nome }}</a>
+                            {% if not produto.ativo %}<span class="ml-2 text-xs text-red-600">(inativo)</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">{{ produto.codigo_barras|default:"—" }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ produto.sku|default:"—" }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ produto.categoria|default:"—" }}</td>
+                        <td class="px-4 py-3 font-semibold text-brand-600">R$ {{ produto.preco_venda }}</td>
+                        <td class="px-4 py-3">
+                            {% if produto.ativo %}
+                                <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Ativo</span>
+                            {% else %}
+                                <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">Inativo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr id="linha-vazia">
+                        <td colspan="7" class="px-4 py-10 text-center text-slate-400">
+                            Nenhum produto encontrado.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagina.has_other_pages %}
+        <nav id="paginacao" class="mt-4 flex items-center justify-between text-sm text-slate-600">
+            {% if pagina.has_previous %}
+                <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}&status={{ status }}" class="flex items-center gap-1 transition-colors hover:text-brand-600">
+                    {% include "partials/icon.html" with name="chevron-left" class="h-4 w-4" %} Anterior
+                </a>
+            {% else %}<span></span>{% endif %}
+            <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+            {% if pagina.has_next %}
+                <a href="?page={{ pagina.next_page_number }}&q={{ termo }}&status={{ status }}" class="flex items-center gap-1 transition-colors hover:text-brand-600">
+                    Próxima {% include "partials/icon.html" with name="chevron-right" class="h-4 w-4" %}
+                </a>
+            {% else %}<span></span>{% endif %}
+        </nav>
+    {% endif %}
 </div>
+{% endblock %}
 
-{% if pagina.has_other_pages %}
-    <nav id="paginacao" class="mt-4 flex items-center justify-between text-sm text-slate-600">
-        {% if pagina.has_previous %}
-            <a href="?page={{ pagina.previous_page_number }}&q={{ termo }}&status={{ status }}" class="hover:text-indigo-600">&laquo; Anterior</a>
-        {% else %}<span></span>{% endif %}
-        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-        {% if pagina.has_next %}
-            <a href="?page={{ pagina.next_page_number }}&q={{ termo }}&status={{ status }}" class="hover:text-indigo-600">Próxima &raquo;</a>
-        {% else %}<span></span>{% endif %}
-    </nav>
-{% endif %}
-
+{% block shell_scripts %}
 <script>
 (function () {
     var busca = document.getElementById("busca-produto");
@@ -130,27 +134,31 @@
         if (!selecionados.size) {
             resumoSelecao.textContent = "Nenhum produto selecionado.";
             botaoPreparar.disabled = true;
+            botaoPreparar.classList.add("cursor-not-allowed", "border-slate-300", "bg-white", "text-slate-400");
+            botaoPreparar.classList.remove("border-transparent", "bg-brand-600", "text-white", "shadow-sm");
         } else {
             resumoSelecao.textContent = selecionados.size + " produto(s) selecionado(s).";
             botaoPreparar.disabled = false;
+            botaoPreparar.classList.remove("cursor-not-allowed", "border-slate-300", "bg-white", "text-slate-400");
+            botaoPreparar.classList.add("border-transparent", "bg-brand-600", "text-white", "shadow-sm");
         }
     }
 
     function linhaProduto(produto) {
         var tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50";
+        tr.className = "transition-colors hover:bg-slate-50";
         tr.dataset.uuid = produto.uuid;
         tr.innerHTML =
-            '<td class="px-4 py-3"><input type="checkbox" class="produto-check rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="' + produto.uuid + '"></td>' +
-            '<td class="px-4 py-3"><a href="/app/produtos/' + produto.uuid + '/" class="font-medium text-indigo-600 hover:text-indigo-800">' + produto.nome + '</a>' +
+            '<td class="px-4 py-3"><input type="checkbox" class="produto-check rounded border-slate-300 text-brand-600 focus:ring-brand-600" value="' + produto.uuid + '"></td>' +
+            '<td class="px-4 py-3"><a href="/app/produtos/' + produto.uuid + '/" class="font-semibold text-brand-600 transition-colors hover:text-brand-700">' + produto.nome + '</a>' +
             (produto.ativo ? "" : '<span class="ml-2 text-xs text-red-600">(inativo)</span>') + '</td>' +
             '<td class="px-4 py-3 text-slate-500">' + (produto.codigo_barras || "—") + '</td>' +
             '<td class="px-4 py-3 text-slate-500">' + (produto.sku || "—") + '</td>' +
             '<td class="px-4 py-3 text-slate-500">' + (produto.categoria || "—") + '</td>' +
-            '<td class="px-4 py-3">R$ ' + produto.preco_venda + '</td>' +
+            '<td class="px-4 py-3 font-semibold text-brand-600">R$ ' + produto.preco_venda + '</td>' +
             '<td class="px-4 py-3">' + (produto.ativo
-                ? '<span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Ativo</span>'
-                : '<span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Inativo</span>') + '</td>';
+                ? '<span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Ativo</span>'
+                : '<span class="rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">Inativo</span>') + '</td>';
         var checkbox = tr.querySelector(".produto-check");
         checkbox.checked = selecionados.has(produto.uuid);
         return tr;

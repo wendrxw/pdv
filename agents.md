@@ -237,3 +237,70 @@ Regras:
 2. **Verificação do tenant:** Antes de qualquer `Model.objects.get()`, confirmar se existe filtro por `tenant`.
 3. **Django Admin:** Todo novo model deve ser registrado no admin com list_display e filters.
 4. **Commit:** Usar Conventional Commits.
+
+## Ações e comandos
+
+- Quando for necessário, execute:
+  `uv run ./manage.py makemigrations && uv run ./manage.py migrate;`
+- Rode um check no django:
+  `uv run ./manage.py check` (e `uv run ./manage.py check --deploy` antes de deploy).
+- Verifique sempre o resultado: `uv run ./manage.py showmigrations | grep '\[ \]'`
+  deve retornar vazio (nenhuma migration pendente).
+
+### Mesmos comandos NO SERVIDOR (produção)
+
+**Obrigatório carregar o `.env` antes** — sem ele o Django usa os defaults
+(SQLite + DEBUG=True) e o migrate NÃO afeta o PostgreSQL de produção:
+
+```bash
+uv run --with paramiko --no-project deploy/ssh-servidor.py \
+  "cd /srv/apps/pdv && set -a && . ./.env && set +a && .venv/bin/python manage.py makemigrations --check && .venv/bin/python manage.py migrate && .venv/bin/python manage.py check" --sudo
+
+# Verificação (esperado: aplicadas N, pendentes vazio):
+uv run --with paramiko --no-project deploy/ssh-servidor.py \
+  "cd /srv/apps/pdv && set -a && . ./.env && set +a && .venv/bin/python manage.py showmigrations | awk '/\[X\]/{n++} /\[ \]/{u++} END{print \"aplicadas:\", n, \"pendentes:\", u}'" --sudo
+```
+
+## Acesso ao servidor de produção (ação padrão do agente)
+
+O servidor de produção é um **Debian 12 i686 compartilhado** acessível por
+SSH. Sempre que uma task envolver deploy, diagnóstico ou operação em
+produção, usar este acesso como ação padrão:
+
+- **Host:** `192.168.1.119` · **Usuário:** `servidor1` · **Sudo:** via senha.
+- **Credenciais:** no arquivo LOCAL `deploy/servidor.ssh.env` (git-ignored —
+  NUNCA versionar as credenciais; modelo em
+  `deploy/servidor.ssh.env.example`).
+- **Ferramenta padrão:** `deploy/ssh-servidor.py` (paramiko):
+
+  ```bash
+  uv run --with paramiko --no-project deploy/ssh-servidor.py "comando"
+  uv run --with paramiko --no-project deploy/ssh-servidor.py "comando" --sudo
+  uv run --with paramiko --no-project deploy/ssh-servidor.py --upload arquivo /caminho/destino
+  ```
+
+### Regras de operação no servidor
+
+1. **AUDITAR ANTES DE MUDAR:** `ss -lntp`, `systemctl list-units
+   --type=service --state=running`, `ls /etc/nginx/sites-enabled`,
+   `cloudflared tunnel list` — entender o que roda antes de tocar.
+2. **Servidor compartilhado:** hospeda outros projetos (farol em
+   `/srv/apps/farol`, gunicorn :8000, PostgreSQL 15, Redis, Docker,
+   túnel Cloudflare `farol`). Nunca alterar/remover serviços de terceiros;
+   validar que continuam funcionando depois de qualquer mudança.
+3. **Backup antes de alterar:** `/etc/nginx`, `/etc/cloudflared`,
+   `/etc/systemd/system` → `/root/backups-pdv-<data>`.
+4. **Nginx:** sempre `nginx -t` antes de `systemctl reload nginx`; não
+   usar `listen [::]:80` em servidor compartilhado (quebra roteamento
+   IPv6 dos túneis para sites que escutam só IPv4).
+5. **PDV em produção:** app em `/srv/apps/pdv` (git em `main`), venv
+   Python 3.11, `pdv.service` (gunicorn 127.0.0.1:8001 com
+   EnvironmentFile `.env`), site nginx `pdv`, túnel Cloudflare `pdv`
+   (`pdv-tunnel.service`), PostgreSQL role/db `pdv`.
+   Deploy = `git pull --ff-only origin main` + restart `pdv` + (se
+   houver) `migrate`/`collectstatic`. O script `deploy/setup-pdv.sh`
+   faz a instalação inicial completa.
+6. **Segredos:** nunca imprimir/versionar SECRET_KEY, senhas de banco ou
+   certificados; `.env` fica em `/srv/apps/pdv/.env` (chmod 600).
+7. **Rollback:** reverter imediatamente a alteração responsável se algo
+   quebrar serviço existente; backups em `/root/backups-pdv-*`.

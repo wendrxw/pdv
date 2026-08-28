@@ -1,12 +1,19 @@
 """Abstração do dispositivo de impressão.
 
-A implementação real (``UsbPrinterDevice``) escreve direto em
-``/dev/usb/lp0`` (grupo ``lp``, sem sudo). Os testes usam
-``FakePrinterDevice``, que apenas captura os bytes — nenhum teste da
-suíte padrão toca a impressora física.
+Plataformas suportadas:
+
+- **Linux:** ``UsbPrinterDevice`` escreve direto em ``/dev/usb/lp0``
+  (grupo ``lp``, sem sudo);
+- **Windows:** ``WindowsRawPrinterDevice`` envia os bytes pelo spooler
+  (win32print, datatype RAW) usando o NOME da impressora instalada —
+  funciona com o driver/utility da Elgin sem transformar os dados EPL2.
+
+Os testes usam ``FakePrinterDevice``, que apenas captura os bytes — nenhum
+teste da suíte padrão toca a impressora física.
 """
 
 import os
+import sys
 from abc import ABC, abstractmethod
 
 
@@ -24,6 +31,18 @@ class PrinterDevice(ABC):
     @abstractmethod
     def escrever(self, dados: bytes) -> None:
         """Envia os bytes para a impressora (pode levantar PrinterError)."""
+
+
+def criar_dispositivo(identificador: str) -> PrinterDevice:
+    """Seleciona o dispositivo conforme a plataforma.
+
+    - Windows: ``identificador`` é o NOME da impressora (ex.: "Elgin L42 PRO");
+    - Linux/outros: ``identificador`` é o caminho do dispositivo
+      (ex.: ``/dev/usb/lp0``).
+    """
+    if sys.platform == "win32":
+        return WindowsRawPrinterDevice(identificador)
+    return UsbPrinterDevice(identificador)
 
 
 class UsbPrinterDevice(PrinterDevice):
@@ -49,6 +68,58 @@ class UsbPrinterDevice(PrinterDevice):
                 impressora.flush()
         except OSError as exc:
             raise PrinterError(f"Falha ao escrever em {self.caminho}: {exc}") from exc
+
+
+class WindowsRawPrinterDevice(PrinterDevice):
+    """Impressora Windows via spooler (win32print, datatype RAW).
+
+    O envio em RAW ignora transformações do driver — necessário para
+    EPL2 (etiquetas) e ESC/POS (comprovantes) chegarem intactos ao
+    firmware.
+    """
+
+    def __init__(self, nome):
+        self.nome = nome
+
+    def _win32print(self):
+        try:
+            import win32print
+        except ImportError as exc:
+            raise PrinterError(
+                "pywin32 não está instalado. Execute: pip install pywin32"
+            ) from exc
+        return win32print
+
+    def disponivel(self):
+        win32print = self._win32print()
+        try:
+            handle = win32print.OpenPrinter(self.nome)
+        except Exception:
+            return False
+        win32print.ClosePrinter(handle)
+        return True
+
+    def escrever(self, dados: bytes) -> None:
+        win32print = self._win32print()
+        try:
+            handle = win32print.OpenPrinter(self.nome)
+        except Exception as exc:
+            raise PrinterError(
+                f"Não foi possível abrir a impressora '{self.nome}': {exc}"
+            ) from exc
+        try:
+            try:
+                win32print.StartDocPrinter(handle, 1, ("PDV print-agent", None, "RAW"))
+                win32print.StartPagePrinter(handle)
+                win32print.WritePrinter(handle, dados)
+                win32print.EndPagePrinter(handle)
+                win32print.EndDocPrinter(handle)
+            except Exception as exc:
+                raise PrinterError(
+                    f"Falha ao enviar para '{self.nome}': {exc}"
+                ) from exc
+        finally:
+            win32print.ClosePrinter(handle)
 
 
 class FakePrinterDevice(PrinterDevice):

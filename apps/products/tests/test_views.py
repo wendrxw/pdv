@@ -1,10 +1,17 @@
-from django.test import TestCase
+import shutil
+import tempfile
+from decimal import Decimal
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.companies.models import Tenant
 
 from ..models import Categoria, Produto
+
+MEDIA_TESTE = tempfile.mkdtemp()
 
 
 class ProdutosViewBaseTestCase(TestCase):
@@ -110,6 +117,210 @@ class AlternarStatusViewTest(ProdutosViewBaseTestCase):
         self.client.get(reverse("products:alternar_status", args=[produto.uuid]))
         produto.refresh_from_db()
         self.assertTrue(produto.ativo)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_TESTE)
+class ProdutoImagemENcmTest(ProdutosViewBaseTestCase):
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_TESTE, ignore_errors=True)
+
+    def test_ncm_invalido_rejeitado(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "NCM ruim",
+                "ncm": "abc",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="NCM ruim").exists())
+
+    def test_ncm_valido_salvo(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "NCM bom",
+                "ncm": "21069030",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        produto = Produto.objects.get(nome="NCM bom")
+        self.assertEqual(produto.ncm, "21069030")
+
+    def test_imagem_valida_salva(self):
+        imagem = SimpleUploadedFile(
+            "foto.png", b"\x89PNG\r\n\x1a\n" + b"0" * 100, content_type="image/png"
+        )
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Com imagem",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+                "imagem": imagem,
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        produto = Produto.objects.get(nome="Com imagem")
+        self.assertTrue(produto.imagem.name.endswith("foto.png"))
+
+    def test_imagem_acima_de_5mb_rejeitada(self):
+        imagem = SimpleUploadedFile(
+            "grande.png",
+            b"x" * (5 * 1024 * 1024 + 1),
+            content_type="image/png",
+        )
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Grande",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+                "imagem": imagem,
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="Grande").exists())
+
+    def test_formato_nao_suportado_rejeitado(self):
+        imagem = SimpleUploadedFile(
+            "anim.gif", b"GIF89a" + b"0" * 100, content_type="image/gif"
+        )
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "GIF",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+                "imagem": imagem,
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="GIF").exists())
+
+    def test_editar_sem_nova_imagem_mantem_imagem_existente(self):
+        imagem = SimpleUploadedFile(
+            "original.png", b"\x89PNG\r\n\x1a\n" + b"0" * 100,
+            content_type="image/png",
+        )
+        self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Mantém imagem",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "1.00",
+                "estoque_minimo": "0",
+                "imagem": imagem,
+            },
+        )
+        produto = Produto.objects.get(nome="Mantém imagem")
+        self.assertTrue(produto.imagem)
+        resposta = self.client.post(
+            reverse("products:editar", args=[produto.uuid]),
+            {
+                "nome": "Mantém imagem",
+                "unidade_medida": "UN",
+                "preco_custo": "0.50",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        produto.refresh_from_db()
+        self.assertTrue(produto.imagem)
+        self.assertTrue(produto.imagem.name.endswith("original.png"))
+
+
+class ProdutoCodigoFiscalTest(ProdutosViewBaseTestCase):
+    def test_codigo_gerado_automaticamente_sequencial(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Primeiro",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        primeiro = Produto.objects.get(nome="Primeiro")
+        self.assertEqual(primeiro.codigo, "000001")
+        self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Segundo",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+            },
+        )
+        segundo = Produto.objects.get(nome="Segundo")
+        self.assertEqual(segundo.codigo, "000002")
+
+    def test_campos_fiscais_salvos(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "Fiscal",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+                "ncm": "21069030",
+                "cest": "2801000",
+                "cfop": "5102",
+                "origem": "1",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        produto = Produto.objects.get(nome="Fiscal")
+        self.assertEqual(produto.ncm, "21069030")
+        self.assertEqual(produto.cest, "2801000")
+        self.assertEqual(produto.cfop, "5102")
+        self.assertEqual(produto.origem, "1")
+
+    def test_cfop_invalido_rejeitado(self):
+        resposta = self.client.post(
+            reverse("products:novo"),
+            {
+                "nome": "CFOP ruim",
+                "unidade_medida": "UN",
+                "preco_custo": "1.00",
+                "preco_venda": "2.00",
+                "estoque_minimo": "0",
+                "cfop": "abc",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Produto.objects.filter(nome="CFOP ruim").exists())
+
+    def test_margem_lucro_calculada(self):
+        produto = Produto.objects.create(
+            tenant=self.tenant,
+            nome="Margem",
+            preco_custo=Decimal("8.00"),
+            preco_venda=Decimal("10.00"),
+        )
+        self.assertEqual(produto.margem_lucro, Decimal("20.00"))
 
 
 class BarcodeViewTest(ProdutosViewBaseTestCase):

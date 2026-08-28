@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
@@ -6,7 +8,9 @@ urlpatterns = [
     path("", include("apps.web.urls")),
     path("", include("apps.accounts.urls")),
     path("app/produtos/", include("apps.products.urls")),
+    path("app/clientes/", include("apps.customers.urls")),
     path("app/estoque/", include("apps.inventory.urls")),
+    path("app/relatorios/", include("apps.reports.urls")),
     path("app/financeiro/", include("apps.financial.urls")),
     path("app/impressao/", include("apps.printing.urls")),
     path("api/print-agent/", include("apps.printing.api_urls")),
@@ -14,3 +18,6 @@ urlpatterns = [
     path("app/etiquetas/", include("apps.labels.urls")),
     path("", include("apps.sales.urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

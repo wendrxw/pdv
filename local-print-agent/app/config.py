@@ -1,9 +1,14 @@
-"""Configuração do Local Print Agent via variáveis de ambiente.
+"""Configuração do Local Print Agent via variáveis de ambiente e
+configuração local persistente.
 
 Nada de segredo no código: URL do servidor, dispositivo da impressora e
-credenciais vêm do ambiente (ou do arquivo de estado local, para o token).
+credenciais vêm do ambiente ou da configuração local (estado do usuário).
+A configuração local (state_dir/config.json) é criada pela configuração
+interativa do primeiro uso e tem PRIORIDADE sobre os padrões do ambiente
+— permite operação sem mexer em variáveis de sistema.
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -15,7 +20,7 @@ def _env(key, default=None):
 def _env_int(key, default):
     try:
         return int(_env(key, str(default)))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return default
 
 
@@ -70,7 +75,9 @@ class Config:
     def from_env(cls):
         """Lê as variáveis de ambiente (PRINT_AGENT_*)."""
         return cls(
-            server_url=_env("PRINT_AGENT_SERVER_URL", "http://127.0.0.1:8000"),
+            server_url=_env(
+                "PRINT_AGENT_SERVER_URL", "https://pdv.wendrxw.online"
+            ),
             device=_env("PRINTER_DEVICE", "/dev/usb/lp0"),
             pair_code=_env("PRINT_AGENT_PAIR_CODE") or None,
             largura_padrao=_env("PRINT_AGENT_LARGURA_PADRAO", "58"),
@@ -99,3 +106,63 @@ class Config:
     @property
     def caminho_processados(self):
         return self.state_dir / "processados.jsonl"
+
+    @property
+    def caminho_config_local(self):
+        return self.state_dir / "config.json"
+
+    def aplicar(self, dados: dict):
+        """Aplica valores da configuração local (somente os presentes)."""
+        for chave in (
+            "server_url",
+            "device",
+            "label_device",
+            "largura_padrao",
+            "codepage",
+            "escpos",
+            "cortar_parcial",
+            "selecionar_codepage",
+            "alimentacao_final",
+            "label_dpi",
+            "label_linguagem",
+            "poll_interval",
+            "http_timeout",
+            "log_level",
+            "estacao_nome",
+        ):
+            if chave in dados and dados[chave] not in (None, ""):
+                setattr(self, chave, dados[chave])
+
+    def salvar_local(self):
+        """Persiste a configuração interativa (sem credenciais)."""
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        dados = {
+            "server_url": self.server_url,
+            "device": self.device,
+            "label_device": self.label_device,
+            "largura_padrao": self.largura_padrao,
+            "codepage": self.codepage,
+            "escpos": self.escpos,
+            "cortar_parcial": self.cortar_parcial,
+            "selecionar_codepage": self.selecionar_codepage,
+            "alimentacao_final": self.alimentacao_final,
+            "label_dpi": self.label_dpi,
+            "label_linguagem": self.label_linguagem,
+            "poll_interval": self.poll_interval,
+            "http_timeout": self.http_timeout,
+            "log_level": self.log_level,
+            "estacao_nome": self.estacao_nome,
+        }
+        self.caminho_config_local.write_text(
+            json.dumps(dados, ensure_ascii=False, indent=2), "utf-8"
+        )
+
+    @classmethod
+    def carregar_local(cls, config):
+        """Sobrepõe a configuração local salva (se existir)."""
+        try:
+            dados = json.loads(config.caminho_config_local.read_text("utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            return config
+        config.aplicar(dados)
+        return config

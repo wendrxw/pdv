@@ -1,10 +1,11 @@
-{% extends "app_base.html" %}
-{% block app_title %}Contas a receber{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Contas a receber{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <h1 class="text-2xl font-bold text-slate-900">Contas a receber</h1>
-    <a href="{% url 'financial:receber_nova' %}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Nova conta a receber</a>
+    <a href="{% url 'financial:receber_nova' %}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Nova conta a receber</a>
 </div>
 
 <form method="get" class="mb-4 flex flex-wrap gap-2">
@@ -32,7 +33,7 @@
         <tbody class="divide-y divide-slate-100">
             {% for conta in pagina %}
                 <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-3"><a href="{% url 'financial:receber_detalhe' conta.uuid %}" class="font-medium text-indigo-600 hover:text-indigo-800">{{ conta.descricao }}</a></td>
+                    <td class="px-4 py-3"><a href="{% url 'financial:receber_detalhe' conta.uuid %}" class="font-medium text-brand-600 hover:text-brand-800">{{ conta.descricao }}</a></td>
                     <td class="px-4 py-3">{{ conta.cliente_nome|default:"—" }}</td>
                     <td class="px-4 py-3 font-medium">{{ conta.valor_total }}</td>
                     <td class="px-4 py-3">
@@ -41,7 +42,7 @@
                         {% elif conta.status == 'CANCELADA' %}
                             <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
                         {% else %}
-                            <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">{{ conta.get_status_display }}</span>
+                            <span class="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">{{ conta.get_status_display }}</span>
                         {% endif %}
                     </td>
                     <td class="px-4 py-3 text-slate-500">{{ conta.get_origem_display }}</td>
@@ -51,5 +52,6 @@
             {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

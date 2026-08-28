@@ -63,7 +63,7 @@ class PrintAgentClient:
             raise PrintAgentClientError(f"Falha de rede: {exc}") from exc
         try:
             resultado = json.loads(conteudo or b"{}")
-        except json.JSONDecodeError, UnicodeDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             resultado = {}
         if status == 401:
             raise AuthError(str(resultado.get("erro", "Credencial inválida.")))
