@@ -44,7 +44,7 @@
         <form method="post" action="{% url 'labels:selecao' %}" id="form-preparar-impressao">
             {% csrf_token %}
             <button type="submit" id="botao-preparar-impressao" disabled
-                    class="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
+                    class="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:border disabled:border-slate-300 disabled:bg-white disabled:text-slate-400 disabled:shadow-none">
                 {% include "partials/icon.html" with name="receipt" class="h-4 w-4" %}
                 Preparar impressão de etiquetas
             </button>

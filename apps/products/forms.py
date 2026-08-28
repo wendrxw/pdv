@@ -9,7 +9,7 @@ INPUT_CLASS = (
     "focus:ring-1 focus:ring-indigo-500"
 )
 
-TAMANHO_MAXIMO_IMAGEM = 2 * 1024 * 1024
+TAMANHO_MAXIMO_IMAGEM = 5 * 1024 * 1024
 EXTENSOES_PERMITIDAS_IMAGEM = {"png", "jpg", "jpeg", "webp"}
 
 
@@ -38,7 +38,7 @@ class ProdutoForm(forms.ModelForm):
     imagem = forms.FileField(
         required=False,
         label="Imagem do produto",
-        help_text="PNG, JPG ou WEBP — tamanho máximo 2MB.",
+        help_text="PNG, JPG ou WEBP — tamanho máximo 5MB.",
     )
 
     class Meta:
@@ -164,7 +164,7 @@ class ProdutoForm(forms.ModelForm):
                 "Formato não suportado. Use PNG, JPG ou WEBP."
             )
         if arquivo.size > TAMANHO_MAXIMO_IMAGEM:
-            raise forms.ValidationError("A imagem deve ter no máximo 2MB.")
+            raise forms.ValidationError("A imagem deve ter no máximo 5MB.")
         return arquivo
 
     def clean_ncm(self):

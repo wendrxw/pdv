@@ -223,7 +223,7 @@ class Produto(TenantAwareModel):
         "imagem do produto",
         upload_to=_caminho_imagem_produto,
         blank=True,
-        help_text="PNG, JPG ou WEBP até 2MB.",
+        help_text="PNG, JPG ou WEBP até 5MB.",
     )
     data_cadastro = models.DateTimeField("criado em", auto_now_add=True)
     data_atualizacao = models.DateTimeField("atualizado em", auto_now=True)
