@@ -19,6 +19,25 @@
         </a>
     </div>
 
+    <div class="mb-6 rounded-2xl border border-brand-100 bg-brand-50 p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-sm font-bold text-navy-900">Precisa instalar na máquina da loja?</h2>
+                <p class="mt-1 text-sm text-slate-600">
+                    Baixe o <strong>Print Agent para Windows</strong> (executável único, sem
+                    instalação). No primeiro uso ele pede o código de pareamento desta tela,
+                    detecta as impressoras conectadas e se configura sozinho — imprime
+                    comprovantes e etiquetas automaticamente quando a impressora estiver ligada.
+                </p>
+            </div>
+            <a href="https://github.com/wendrxw/pdv/releases/latest/download/print-agent.exe"
+               class="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+                {% include "partials/icon.html" with name="upload" class="h-4 w-4" %}
+                Baixar agente (Windows)
+            </a>
+        </div>
+    </div>
+
     <form method="post" class="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         {% csrf_token %}
         <input type="hidden" name="acao" value="criar">

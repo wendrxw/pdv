@@ -233,8 +233,160 @@ def comando_raw_test(config):
     print(f"'TESTE SEM SUDO' enviado direto para {config.device}")
 
 
+# ---------------------------------------------------------------------------
+# Autogestão no Windows (sem administrador)
+# ---------------------------------------------------------------------------
+
+
+def comando_instalar_autostart(config):
+    """Registra o agente para iniciar com o Windows (HKCU, sem admin)."""
+    import sys as _sys
+
+    if _sys.platform != "win32":
+        raise SystemExit("Autostart automático é suportado apenas no Windows.")
+    import winreg
+
+    comando = _comando_autostart()
+    chave = winreg.CreateKey(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Run",
+    )
+    winreg.SetValueEx(chave, "PDV-Print-Agent", 0, winreg.REG_SZ, comando)
+    winreg.CloseKey(chave)
+    print("Agente configurado para iniciar com o Windows:")
+    print(f"  {comando}")
+
+
+def comando_remover_autostart(config):
+    """Remove o registro de inicialização automática (HKCU)."""
+    import sys as _sys
+
+    if _sys.platform != "win32":
+        raise SystemExit("Autostart automático é suportado apenas no Windows.")
+    import winreg
+
+    chave = winreg.CreateKey(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Run",
+    )
+    try:
+        winreg.DeleteValue(chave, "PDV-Print-Agent")
+        print("Inicialização automática removida.")
+    except FileNotFoundError:
+        print("Inicialização automática não estava registrada.")
+    winreg.CloseKey(chave)
+
+
+def _comando_autostart():
+    """Linha de comando executada na inicialização do Windows."""
+    import sys as _sys
+
+    if getattr(_sys, "frozen", False):
+        return f'"{_sys.executable}" run'
+    return f'"{_sys.executable}" -m app.main run'
+
+
+def _listar_impressoras_windows():
+    """Nomes das impressoras locais (win32print) ou lista vazia."""
+    import sys as _sys
+
+    if _sys.platform != "win32":
+        return []
+    try:
+        import win32print
+    except ImportError:
+        return []
+    impressoras = []
+    try:
+        for _flags, nome, _descricao, _comentario in win32print.EnumPrinters(
+            win32print.PRINTER_ENUM_LOCAL, None, 1
+        ):
+            impressoras.append(nome)
+    except Exception:
+        return []
+    return impressoras
+
+
+def _escolher_impressora(rotulo, config, chave, obrigatoria=True):
+    """Configura interativa: escolhe a impressora da lista do Windows."""
+    impressoras = _listar_impressoras_windows()
+    atual = getattr(config, chave, "") or ""
+    if impressoras:
+        print(f"\n{rotulo}:")
+        for indice, nome in enumerate(impressoras, start=1):
+            marca = " (atual)" if nome == atual else ""
+            print(f"  [{indice}] {nome}{marca}")
+        if not obrigatoria:
+            print("  [0] Nenhuma (não usar)")
+        padrao = impressoras.index(atual) + 1 if atual in impressoras else None
+        while True:
+            entrada = input(
+                f"Escolha o número"
+                f"{f' [{padrao}]' if padrao else ''}: "
+            ).strip()
+            if not entrada and padrao:
+                escolha = padrao
+            elif entrada.isdigit() and 0 <= int(entrada) <= len(impressoras):
+                escolha = int(entrada)
+            else:
+                print("Opção inválida.")
+                continue
+            if escolha == 0:
+                setattr(config, chave, "")
+            else:
+                setattr(config, chave, impressoras[escolha - 1])
+            break
+    else:
+        if obrigatoria:
+            setattr(
+                config,
+                chave,
+                input(f"{rotulo} (nome/dispositivo): ").strip() or atual,
+            )
+        else:
+            setattr(
+                config,
+                chave,
+                input(f"{rotulo} (vazio para desativar): ").strip() or atual,
+            )
+
+
+def _configuracao_interativa(config, precisa_parear=False):
+    """Primeiro uso: servidor, código de pareamento e impressoras.
+
+    Roda apenas em terminal interativo (TTY); salva tudo em
+    config.json para nunca mais perguntar.
+    """
+    if not sys.stdin.isatty():
+        return config, precisa_parear
+    print("\n=== Configuração inicial do PDV Print Agent ===\n")
+    config.server_url = (
+        input(f"Servidor [{config.server_url}]: ").strip() or config.server_url
+    ).rstrip("/")
+    if precisa_parear:
+        codigo = input("Código de pareamento (PDV → Impressão → Estações): ").strip()
+        config.pair_code = codigo or None
+    # Impressoras: escolha automática no Windows, digitação no Linux.
+    if not config.device:
+        _escolher_impressora("Impressora de comprovantes", config, "device")
+    if not config.label_device:
+        _escolher_impressora(
+            "Impressora de etiquetas (Elgin L42 Pro)",
+            config,
+            "label_device",
+            obrigatoria=False,
+        )
+    config.salvar_local()
+    print("\nConfiguração salva em", config.caminho_config_local)
+    return config, precisa_parear
+
+
 def comando_run(config):
     _configurar_log(config)
+    precisa_parear = carregar_credencial(config) is None and not config.pair_code
+    precisa_configurar = precisa_parear or not config.device or not config.label_device
+    if precisa_configurar and sys.stdin.isatty():
+        config, precisa_parear = _configuracao_interativa(config, precisa_parear)
     cliente, credencial = _cliente_autenticado(config)
     impressora = criar_dispositivo(config.device)
     agente = PrintAgent(config, cliente, impressora, logger=logger)
@@ -280,10 +432,20 @@ def main(argv=None):
         "comando",
         nargs="?",
         default="run",
-        choices=["run", "pair", "test", "raw-test", "codepage-test", "label-test"],
+        choices=[
+            "run",
+            "pair",
+            "test",
+            "raw-test",
+            "codepage-test",
+            "label-test",
+            "instalar-autostart",
+            "remover-autostart",
+        ],
     )
     argumentos = parser.parse_args(argv)
     config = Config.from_env()
+    config = Config.carregar_local(config)
     _configurar_log(config)
 
     if argumentos.comando == "pair":
@@ -300,6 +462,12 @@ def main(argv=None):
         return 0
     if argumentos.comando == "label-test":
         comando_label_test(config)
+        return 0
+    if argumentos.comando == "instalar-autostart":
+        comando_instalar_autostart(config)
+        return 0
+    if argumentos.comando == "remover-autostart":
+        comando_remover_autostart(config)
         return 0
     return comando_run(config)
 

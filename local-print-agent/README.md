@@ -67,49 +67,61 @@ O código de pareamento pode ficar definido em
 `/etc/sv/print-agent/conf` (`PRINT_AGENT_PAIR_CODE=`) na primeira
 execução; após o pareamento, deixe a variável vazia.
 
-## Windows (notebook da loja)
+## Windows (notebook da loja) — instalador de um clique
 
-O agente roda em Windows usando o spooler nativo (win32print, datatype
-**RAW** — os bytes EPL2/ESC/POS chegam intactos ao firmware, sem
-transformação do driver). O driver/utility da impressora pode ficar
-instalado normalmente.
+O agente tem um **executável único** (`print-agent.exe`, sem instalação e
+sem administrador) publicado em:
+https://github.com/wendrxw/pdv/releases/latest/download/print-agent.exe
+(link "Baixar agente (Windows)" também aparece na tela **Impressão →
+Estações** do PDV).
 
-### Instalação (PowerShell)
+### Uso (cliente final, sem conhecimentos técnicos)
+
+1. Baixe o `print-agent.exe` e salve em qualquer pasta (ex.:
+   `Documentos\PDV`).
+2. **Duplo clique.** Na primeira execução o agente pergunta, em português:
+   - o servidor (já vem preenchido com `https://pdv.wendrxw.online`);
+   - o **código de pareamento** (gerado na tela Impressão → Estações);
+   - **quais impressoras usar** — ele lista as impressoras conectadas
+     (ex.: "Elgin L42 PRO") e você só escolhe o número.
+3. Pronto: o agente fica rodando, faz pareamento automático e imprime
+   sozinho. A configuração fica salva — nunca mais pergunta.
+4. **Iniciar junto com o Windows:** `print-agent.exe instalar-autostart`
+   (grava no registro do usuário, sem admin). Para remover:
+   `print-agent.exe remover-autostart`.
+
+### Comportamento automático
+
+- A impressora de **comprovantes** (PRINTER_DEVICE) e a de **etiquetas**
+  (PRINTER_LABEL_DEVICE) são detectadas na primeira execução;
+- Se a impressora estiver **desligada/desconectada**, o agente informa o
+  servidor e **não consome** o trabalho — quando ela for ligada, o
+  trabalho pendente é impresso na próxima verificação (a cada 3s);
+- O agente imprime notas **fiscais e não fiscais** (comprovantes) na
+  térmica e **etiquetas EPL2** na Elgin L42 Pro, em filas independentes.
+
+### Diagnóstico (se precisar)
 
 ```powershell
-# 1. Python 3.9+ (python.org) — marque "Add python.exe to PATH"
-# 2. Copie a pasta local-print-agent para o notebook (ex.: C:\print-agent)
-cd C:\print-agent
-pip install .            # instala pywin32 automaticamente
-
-# 3. Variáveis do ambiente (PowerShell):
-$env:PRINT_AGENT_SERVER_URL="https://pdv.wendrxw.online"
-# NOME da impressora EXATAMENTE como aparece em
-# "Painel de Controle → Dispositivos e Impressoras":
-$env:PRINTER_DEVICE="NomeDaImpressoraTermica"
-$env:PRINTER_LABEL_DEVICE="Elgin L42 PRO"    # impressora de ETIQUETAS
-$env:PRINT_AGENT_PAIR_CODE="CODIGO-DO-PDV"   # Impressão → Estações
-
-# 4. Testes antes de parear:
-python -m app.main test          # página de teste na térmica
-python -m app.main label-test    # etiqueta de calibração (L42 Pro)
-
-# 5. Pareamento (uso único) e execução:
-python -m app.main pair
-python -m app.main run           # loop: poll → imprime → reporta
+print-agent.exe test          # página de teste na térmica
+print-agent.exe label-test    # etiqueta de calibração (L42 Pro)
+print-agent.exe codepage-test # ajuste de acentos
 ```
 
-Dica: se a impressora não aparecer em `test`/`label-test`, confira o
-nome exato em **Painel de Controle → Dispositivos e Impressoras** e o
-cabo USB (a impressora precisa estar LIGADA e listada). A credencial
-fica salva em `~/.print-agent/credencial.json`.
+> O envio usa o spooler do Windows com datatype **RAW** (win32print) —
+> o driver/utility da impressora pode ficar instalado normalmente; os
+> bytes EPL2/ESC/POS chegam intactos ao firmware.
 
-### Rodar em segundo plano (Windows)
+### Rodar via código-fonte (desenvolvedor)
 
-- **Opção simples (testes):** `pythonw -m app.main run` (janela oculta);
-- **Produção:** Agendador de Tarefas (ação: `C:\Python...\pythonw.exe -m
-  app.main run`, iniciar na sessão do usuário logado, reiniciar se falhar)
-  ou NSSM como serviço.
+```powershell
+cd C:\print-agent
+pip install .            # instala pywin32 automaticamente
+$env:PRINT_AGENT_SERVER_URL="https://pdv.wendrxw.online"
+$env:PRINT_AGENT_PAIR_CODE="CODIGO-DO-PDV"
+python -m app.main pair
+python -m app.main run
+```
 
 ## Uso
 
