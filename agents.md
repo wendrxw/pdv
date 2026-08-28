@@ -238,6 +238,29 @@ Regras:
 3. **Django Admin:** Todo novo model deve ser registrado no admin com list_display e filters.
 4. **Commit:** Usar Conventional Commits.
 
+## Ações e comandos
+
+- Quando for necessário, execute:
+  `uv run ./manage.py makemigrations && uv run ./manage.py migrate;`
+- Rode um check no django:
+  `uv run ./manage.py check` (e `uv run ./manage.py check --deploy` antes de deploy).
+- Verifique sempre o resultado: `uv run ./manage.py showmigrations | grep '\[ \]'`
+  deve retornar vazio (nenhuma migration pendente).
+
+### Mesmos comandos NO SERVIDOR (produção)
+
+**Obrigatório carregar o `.env` antes** — sem ele o Django usa os defaults
+(SQLite + DEBUG=True) e o migrate NÃO afeta o PostgreSQL de produção:
+
+```bash
+uv run --with paramiko --no-project deploy/ssh-servidor.py \
+  "cd /srv/apps/pdv && set -a && . ./.env && set +a && .venv/bin/python manage.py makemigrations --check && .venv/bin/python manage.py migrate && .venv/bin/python manage.py check" --sudo
+
+# Verificação (esperado: aplicadas N, pendentes vazio):
+uv run --with paramiko --no-project deploy/ssh-servidor.py \
+  "cd /srv/apps/pdv && set -a && . ./.env && set +a && .venv/bin/python manage.py showmigrations | awk '/\[X\]/{n++} /\[ \]/{u++} END{print \"aplicadas:\", n, \"pendentes:\", u}'" --sudo
+```
+
 ## Acesso ao servidor de produção (ação padrão do agente)
 
 O servidor de produção é um **Debian 12 i686 compartilhado** acessível por

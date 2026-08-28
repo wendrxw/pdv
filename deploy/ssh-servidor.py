@@ -93,10 +93,10 @@ def main():
     use_sudo = "--sudo" in args
     timeout = 120
     if "--timeout" in args:
-        timeout = int(args[args.index("--timeout") + 1])
-    args = [a for a in args if a not in ("--sudo", "--timeout")]
-    if "--timeout" in sys.argv:
-        pass
+        idx = args.index("--timeout")
+        timeout = int(args[idx + 1])
+        args = args[:idx] + args[idx + 2:]
+    args = [a for a in args if a != "--sudo"]
     comando = " ".join(args)
 
     client = _conectar()
