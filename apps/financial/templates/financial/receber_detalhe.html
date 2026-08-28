@@ -1,11 +1,12 @@
-{% extends "app_base.html" %}
-{% block app_title %}{{ conta.descricao }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}{{ conta.descricao }}{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="max-w-3xl">
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-slate-900">{{ conta.descricao }}</h1>
-        <a href="{% url 'financial:receber' %}" class="text-sm text-indigo-600 hover:text-indigo-800">&larr; Voltar</a>
+        <a href="{% url 'financial:receber' %}" class="text-sm text-brand-600 hover:text-brand-800">&larr; Voltar</a>
     </div>
 
     <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white rounded-xl border border-slate-200 p-6 mb-6 text-sm">
@@ -44,7 +45,7 @@
                             {% elif parcela.status == 'CANCELADA' %}
                                 <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">Cancelada</span>
                             {% else %}
-                                <span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">Pendente</span>
+                                <span class="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">Pendente</span>
                             {% endif %}
                         </td>
                         <td class="px-4 py-3">
@@ -69,5 +70,6 @@
             </tbody>
         </table>
     </section>
+</div>
 </div>
 {% endblock %}

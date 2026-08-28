@@ -1,11 +1,8 @@
-{% extends "app_base.html" %}
-{% block app_title %}Configuração de etiquetas{% endblock %}
-{% block nav_extra %}
-<a href="{% url 'labels:selecao' %}" class="hover:text-indigo-600 whitespace-nowrap">Etiquetas</a>
-<a href="{% url 'labels:config' %}" class="hover:text-indigo-600 whitespace-nowrap">Configuração</a>
-{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Configuração de etiquetas{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="max-w-3xl">
     <h1 class="text-2xl font-bold text-slate-900 mb-2">Configuração de etiquetas</h1>
     <p class="text-sm text-slate-500 mb-6">
@@ -70,8 +67,9 @@
             </div>
         </div>
         <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Salvar</button>
+            <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Salvar</button>
         </div>
     </form>
+</div>
 </div>
 {% endblock %}

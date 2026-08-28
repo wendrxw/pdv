@@ -52,6 +52,8 @@ server {
         proxy_connect_timeout 30s;
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
+        # HTML nunca é cacheado: evita páginas antigas após deploy.
+        add_header Cache-Control "no-cache";
     }
 
     # Gzip básico

@@ -1,7 +1,8 @@
-{% extends "app_base.html" %}
-{% block app_title %}{{ inventario.descricao }}{% endblock %}
+{% extends "pdv_shell.html" %}
+{% block shell_title %}{{ inventario.descricao }}{% endblock %}
 
-{% block app_content %}
+{% block shell_content %}
+<div class="mx-auto max-w-7xl p-6">
 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-slate-900">{{ inventario.descricao }}</h1>
@@ -14,7 +15,7 @@
         {% if inventario.status == 'ABERTO' %}
             <form method="post" action="{% url 'inventory:inventario_acao' inventario.uuid 'iniciar-contagem' %}">
                 {% csrf_token %}
-                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Iniciar contagem</button>
+                <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Iniciar contagem</button>
             </form>
         {% endif %}
         {% if inventario.status == 'ABERTO' or inventario.status == 'EM_CONTAGEM' %}
@@ -77,5 +78,6 @@
             {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

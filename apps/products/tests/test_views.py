@@ -176,10 +176,10 @@ class ProdutoImagemENcmTest(ProdutosViewBaseTestCase):
         produto = Produto.objects.get(nome="Com imagem")
         self.assertTrue(produto.imagem.name.endswith("foto.png"))
 
-    def test_imagem_acima_de_2mb_rejeitada(self):
+    def test_imagem_acima_de_5mb_rejeitada(self):
         imagem = SimpleUploadedFile(
             "grande.png",
-            b"x" * (2 * 1024 * 1024 + 1),
+            b"x" * (5 * 1024 * 1024 + 1),
             content_type="image/png",
         )
         resposta = self.client.post(
