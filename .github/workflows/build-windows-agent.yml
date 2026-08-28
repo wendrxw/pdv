@@ -35,7 +35,12 @@ jobs:
         shell: pwsh
         run: |
           cd local-print-agent
-          pyinstaller --onefile --name print-agent app/main.py
+          pyinstaller --onefile --name print-agent launcher.py
+
+      - name: Smoke test do executável
+        shell: pwsh
+        run: |
+          ./local-print-agent/dist/print-agent.exe -h
 
       - name: Publicar release com o executável
         if: startsWith(github.ref, 'refs/tags/agent-v')
