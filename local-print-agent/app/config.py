@@ -75,7 +75,9 @@ class Config:
     def from_env(cls):
         """Lê as variáveis de ambiente (PRINT_AGENT_*)."""
         return cls(
-            server_url=_env("PRINT_AGENT_SERVER_URL", "http://127.0.0.1:8000"),
+            server_url=_env(
+                "PRINT_AGENT_SERVER_URL", "https://pdv.wendrxw.online"
+            ),
             device=_env("PRINTER_DEVICE", "/dev/usb/lp0"),
             pair_code=_env("PRINT_AGENT_PAIR_CODE") or None,
             largura_padrao=_env("PRINT_AGENT_LARGURA_PADRAO", "58"),
