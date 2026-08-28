@@ -27,6 +27,8 @@ staticfiles/
 .idea/
 .vscode/
 *.swp
+# Ferramentas baixadas no build (tailwindcss standalone)
+frontend/.tools/
 .DS_Store
 # Credenciais de acesso ao servidor (nunca versionar)
 deploy/servidor.ssh.env
