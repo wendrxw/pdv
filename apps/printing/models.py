@@ -53,6 +53,17 @@ class ConfiguracaoImpressao(TenantAwareModel):
             "que qualquer estação ativa do tenant assuma o trabalho."
         ),
     )
+    impressora_fiscal = models.CharField(
+        "impressora fiscal/não fiscal",
+        max_length=120,
+        blank=True,
+        help_text=(
+            "Nome da impressora de comprovantes (fiscais e não fiscais) "
+            "instalada na máquina da loja. Enviado ao agente local, que "
+            "encaminha o trabalho para esse equipamento. Vazio usa a "
+            "impressora configurada no próprio agente."
+        ),
+    )
     tentativas_maximas = models.PositiveIntegerField(
         "tentativas máximas",
         default=5,

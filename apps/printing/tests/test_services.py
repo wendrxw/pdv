@@ -103,6 +103,18 @@ class DadosComprovanteTest(PrintingBaseTestCase):
         self.assertEqual(dados["cabecalho"]["nome"], "Loja Configurada")
         self.assertEqual(dados["cabecalho"]["cnpj"], "00000000000100")
 
+    def test_payload_leva_impressora_fiscal(self):
+        self.config.impressora_fiscal = "Elgin i9"
+        self.config.save()
+        venda = self.venda_finalizada()
+        dados = montar_dados_comprovante(venda, self.config)
+        self.assertEqual(dados["impressora"], "Elgin i9")
+
+    def test_payload_sem_impressora_fiscal_configurada(self):
+        venda = self.venda_finalizada()
+        dados = montar_dados_comprovante(venda, self.config)
+        self.assertEqual(dados["impressora"], "")
+
 
 class PrintJobTest(PrintingBaseTestCase):
     def test_cria_job_com_payload_e_identificador_unico(self):

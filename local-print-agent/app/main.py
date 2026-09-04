@@ -312,7 +312,12 @@ def _comando_autostart():
 
 
 def _listar_impressoras_windows():
-    """Nomes das impressoras locais (win32print) ou lista vazia."""
+    """Nomes das impressoras locais do Windows (win32print) ou lista vazia.
+
+    Enumera impressoras locais e de conexão (rede), remove duplicadas e
+    coloca a impressora padrão em primeiro lugar — assim o cliente vê
+    primeiro o equipamento mais provável de estar em uso.
+    """
     import sys as _sys
 
     if _sys.platform != "win32":
@@ -321,15 +326,59 @@ def _listar_impressoras_windows():
         import win32print
     except ImportError:
         return []
+
+    def _nomes(flags):
+        try:
+            for _flags, nome, _descricao, _comentario in win32print.EnumPrinters(
+                flags, None, 1
+            ):
+                if nome:
+                    yield nome
+        except Exception:
+            return
+
     impressoras = []
-    try:
-        for _flags, nome, _descricao, _comentario in win32print.EnumPrinters(
-            win32print.PRINTER_ENUM_LOCAL, None, 1
-        ):
+    vistos = set()
+    for nome in _nomes(win32print.PRINTER_ENUM_LOCAL):
+        if nome not in vistos:
+            vistos.add(nome)
             impressoras.append(nome)
+    for nome in _nomes(win32print.PRINTER_ENUM_CONNECTIONS):
+        if nome not in vistos:
+            vistos.add(nome)
+            impressoras.append(nome)
+
+    # Impressora padrão na frente (usada na maioria dos PDVs).
+    try:
+        padrao = win32print.GetDefaultPrinter()
     except Exception:
-        return []
+        padrao = None
+    if padrao and padrao in impressoras:
+        impressoras.remove(padrao)
+        impressoras.insert(0, padrao)
     return impressoras
+
+
+def comando_listar_impressoras(config):
+    """Lista as impressoras detectadas no Windows (diagnóstico)."""
+    import sys as _sys
+
+    if _sys.platform != "win32":
+        print("A listagem automática de impressoras é suportada no Windows.")
+        return 0
+    impressoras = _listar_impressoras_windows()
+    if not impressoras:
+        print("Nenhuma impressora encontrada. Verifique o cabo e o driver.")
+        return 1
+    print(f"{len(impressoras)} impressora(s) detectada(s):")
+    for indice, nome in enumerate(impressoras, start=1):
+        marca = ""
+        if nome == (config.device or ""):
+            marca = " (comprovantes)"
+        if nome == (config.label_device or ""):
+            marca += " (etiquetas)"
+        print(f"  [{indice}] {nome}{marca}")
+    return 0
 
 
 def _escolher_impressora(rotulo, config, chave, obrigatoria=True):
@@ -376,6 +425,17 @@ def _escolher_impressora(rotulo, config, chave, obrigatoria=True):
             )
 
 
+def _precisa_escolher_dispositivo(config):
+    """True se o dispositivo de comprovantes ainda não foi definido.
+
+    No Windows o padrão ``/dev/usb/lp0`` (Linux) é inválido e precisa ser
+    substituído pelo nome real da impressora no spooler.
+    """
+    if not config.device:
+        return True
+    return sys.platform == "win32" and config.device.startswith("/dev/")
+
+
 def _configuracao_interativa(config, precisa_parear=False):
     """Primeiro uso: servidor, código de pareamento e impressoras.
 
@@ -392,7 +452,7 @@ def _configuracao_interativa(config, precisa_parear=False):
         codigo = input("Código de pareamento (PDV → Impressão → Estações): ").strip()
         config.pair_code = codigo or None
     # Impressoras: escolha automática no Windows, digitação no Linux.
-    if not config.device:
+    if _precisa_escolher_dispositivo(config):
         _escolher_impressora("Impressora de comprovantes", config, "device")
     if not config.label_device:
         _escolher_impressora(
@@ -409,7 +469,11 @@ def _configuracao_interativa(config, precisa_parear=False):
 def comando_run(config):
     _configurar_log(config)
     precisa_parear = carregar_credencial(config) is None and not config.pair_code
-    precisa_configurar = precisa_parear or not config.device or not config.label_device
+    precisa_configurar = (
+        precisa_parear
+        or _precisa_escolher_dispositivo(config)
+        or not config.label_device
+    )
     if precisa_configurar and sys.stdin.isatty():
         config, precisa_parear = _configuracao_interativa(config, precisa_parear)
     try:
@@ -469,6 +533,7 @@ def main(argv=None):
             "raw-test",
             "codepage-test",
             "label-test",
+            "listar-impressoras",
             "instalar-autostart",
             "remover-autostart",
         ],
@@ -492,6 +557,8 @@ def main(argv=None):
     if argumentos.comando == "label-test":
         comando_label_test(config)
         return 0
+    if argumentos.comando == "listar-impressoras":
+        return comando_listar_impressoras(config)
     if argumentos.comando == "instalar-autostart":
         comando_instalar_autostart(config)
         return 0

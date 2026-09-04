@@ -3,8 +3,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, models
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from apps.sales.models import Venda
 
@@ -43,6 +44,40 @@ def configuracao(request):
     else:
         form = ConfiguracaoImpressaoForm(instance=config, tenant=tenant)
     return render(request, "printing/config.html", {"form": form})
+
+
+@login_required
+def atalho_caixa(request):
+    """Baixa um atalho da área de trabalho para a Frente de Caixa.
+
+    Gera um arquivo de atalho apontando para a tela de venda com o caixa
+    aberto automaticamente e com fullscreen ativado (``?fullscreen=1``).
+    No Windows gera um ``.url`` (Internet Shortcut); nos demais sistemas
+    gera um ``.desktop`` compatível com o padrão freedesktop.
+    """
+    tenant = _tenant_atual(request)
+    if tenant is None:
+        return redirect("dashboard")
+    url = request.build_absolute_uri(reverse("sales:nova_venda_rapida"))
+    url = f"{url}?fullscreen=1"
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    if "windows" in user_agent.lower():
+        conteudo = "[InternetShortcut]\nURL=" + url + "\nIconIndex=0\n"
+        nome_arquivo = "PDV - Frente de Caixa.url"
+    else:
+        conteudo = (
+            "[Desktop Entry]\n"
+            "Type=Link\n"
+            "Name=PDV - Frente de Caixa\n"
+            "URL=" + url + "\n"
+            "Icon=accessories-calculator\n"
+        )
+        nome_arquivo = "pdv-frente-de-caixa.desktop"
+    resposta = HttpResponse(conteudo, content_type="application/octet-stream")
+    resposta["Content-Disposition"] = (
+        f'attachment; filename="{nome_arquivo}"'
+    )
+    return resposta
 
 
 @login_required

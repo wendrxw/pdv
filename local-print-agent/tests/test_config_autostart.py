@@ -41,6 +41,18 @@ class ConfigLocalTest(unittest.TestCase):
         nova = Config.carregar_local(self.config)
         self.assertEqual(nova.device, "")
 
+    def test_from_env_windows_device_padrao_vazio(self):
+        with unittest.mock.patch("app.config.sys.platform", "win32"), \
+                unittest.mock.patch.dict("os.environ", {}, clear=True):
+            config = Config.from_env()
+            self.assertEqual(config.device, "")
+
+    def test_from_env_linux_device_padrao_usblp(self):
+        with unittest.mock.patch("app.config.sys.platform", "linux"), \
+                unittest.mock.patch.dict("os.environ", {}, clear=True):
+            config = Config.from_env()
+            self.assertEqual(config.device, "/dev/usb/lp0")
+
 
 class AutostartWindowsTest(unittest.TestCase):
     """Autostart no HKCU com winreg fake (não existe no Linux)."""

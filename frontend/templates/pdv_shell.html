@@ -229,5 +229,38 @@
     });
 })();
 </script>
+
+<script>
+// Frente de Caixa em tela cheia (via atalho da área de trabalho).
+// O parâmetro ?fullscreen=1 é adicionado pelo atalho gerado em
+// Configurações. Navegadores exigem gesto do usuário para o fullscreen:
+// tentamos imediatamente e também no primeiro clique/tecla.
+(function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get("fullscreen") !== "1") return;
+
+    function entrarTelaCheia() {
+        var el = document.documentElement;
+        if (el.requestFullscreen) {
+            el.requestFullscreen().catch(function () {});
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        }
+    }
+
+    document.addEventListener("pointerdown", function entrar() {
+        document.removeEventListener("pointerdown", entrar);
+        entrarTelaCheia();
+    }, { once: true });
+    document.addEventListener("keydown", function entrar() {
+        document.removeEventListener("keydown", entrar);
+        entrarTelaCheia();
+    }, { once: true });
+
+    entrarTelaCheia();
+})();
+</script>
 {% block shell_scripts %}{% endblock %}
 {% endblock %}

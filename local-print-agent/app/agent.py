@@ -106,6 +106,29 @@ class PrintAgent:
             criar_dispositivo(config.label_device) if config.label_device else None
         )
 
+    def _dispositivo_para_job(self, padrao, nome_payload):
+        """Escolhe o dispositivo de impressão para um trabalho específico.
+
+        O servidor pode indicar a impressora desejada no payload
+        (configuração feita na tela de Configurações do PDV). Se o nome
+        bater com o dispositivo já configurado, usa ele; senão tenta abrir
+        a impressora pelo nome informado e, se disponível, a usa. Em caso
+        de falha retorna o dispositivo padrão (a impressão segue no
+        equipamento local configurado no agente).
+        """
+        if not nome_payload:
+            return padrao
+        atual = getattr(padrao, "nome", None) or getattr(padrao, "caminho", None)
+        if nome_payload == atual:
+            return padrao
+        candidato = criar_dispositivo(nome_payload)
+        try:
+            if candidato.disponivel():
+                return candidato
+        except PrinterError:
+            pass
+        return padrao
+
     def ciclo(self):
         """Uma rodada de polling. Retorna 'impresso', 'ocioso' ou 'ignorado'."""
         resultado_comprovante = self._ciclo_comprovantes()
@@ -139,6 +162,15 @@ class PrintAgent:
             return "ocioso"
 
         payload = job.get("payload") or {}
+        impressora = self._dispositivo_para_job(
+            self.impressora, str(payload.get("impressora") or "")
+        )
+        if not impressora.disponivel():
+            self._falhou(
+                job_uuid,
+                f"Impressora '{payload.get('impressora')}' indisponível.",
+            )
+            return "impresso"
         try:
             largura = largura_papel(
                 payload.get("largura_mm", self.config.largura_padrao)
@@ -173,7 +205,7 @@ class PrintAgent:
                     dados_impressao = (
                         selecionar_codepage(self.config.codepage) + dados_impressao
                     )
-            self.impressora.escrever(dados_impressao)
+            impressora.escrever(dados_impressao)
         except (PrinterError, OSError) as exc:
             self._falhou(job_uuid, f"Erro na impressão: {exc}")
             return "impresso"
@@ -218,6 +250,16 @@ class PrintAgent:
             return
 
         payload = job.get("payload") or {}
+        impressora_etiquetas = self._dispositivo_para_job(
+            self.impressora_etiquetas, str(payload.get("impressora") or "")
+        )
+        if not impressora_etiquetas.disponivel():
+            self._falhou_etiquetas(
+                chave,
+                job_uuid,
+                f"Impressora de etiquetas '{payload.get('impressora')}' indisponível.",
+            )
+            return
         try:
             if self.config.label_linguagem != "epl2":
                 raise LabelError(
@@ -225,7 +267,7 @@ class PrintAgent:
                     f"{self.config.label_linguagem}"
                 )
             dados_impressao = gerar_epl2_job(payload)
-            self.impressora_etiquetas.escrever(dados_impressao)
+            impressora_etiquetas.escrever(dados_impressao)
         except (PrinterError, OSError) as exc:
             self._falhou_etiquetas(chave, job_uuid, f"Erro na impressão: {exc}")
             return

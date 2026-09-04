@@ -45,9 +45,9 @@
                             <input type="hidden" name="quantidade" value="1">
                             <button type="submit"
                                     class="flex h-full w-full flex-col rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200">
-                                <span class="mb-2 flex h-24 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+                                <span class="mb-2 flex h-24 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50 p-1.5">
                                     {% if produto.imagem %}
-                                        <img src="{{ produto.imagem.url }}" alt="{{ produto.nome }}" class="h-full w-full object-cover">
+                                        <img src="{{ produto.imagem.url }}" alt="{{ produto.nome }}" class="max-h-full max-w-full object-contain">
                                     {% else %}
                                         <span class="text-slate-300">{% include "partials/icon.html" with name="box" class="h-10 w-10" %}</span>
                                     {% endif %}

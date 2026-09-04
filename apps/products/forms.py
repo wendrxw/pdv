@@ -151,6 +151,17 @@ class ProdutoForm(forms.ModelForm):
         self.fields["marca"].empty_label = "Selecione uma marca"
         for campo in ("categoria", "marca", "unidade_medida", "ativo"):
             self.fields[campo].widget.attrs["class"] = INPUT_CLASS
+        # Nenhum campo é obrigatório nesta tela, exceto nome e preço de
+        # venda (conforme diretriz do produto).
+        self.fields["unidade_medida"].required = False
+        self.fields["categoria"].required = False
+        self.fields["marca"].required = False
+
+    def clean_unidade_medida(self):
+        valor = self.cleaned_data.get("unidade_medida")
+        if not valor:
+            return Produto.UnidadeMedida.UN
+        return valor
 
     def clean_imagem(self):
         arquivo = self.cleaned_data.get("imagem")

@@ -182,6 +182,43 @@ class ImpressaoTest(BaseAgentTest):
         self.assertFalse(dados.startswith(b"\x1bt"))
         self.assertIn("Café".encode("cp850"), dados)
 
+    def test_payload_define_impressora_especifica(self):
+        # O servidor indica a impressora fiscal no payload; o agente usa
+        # esse equipamento em vez do padrão.
+        candidato = FakePrinterDevice()
+        payload = dict(payload_venda(), impressora="Elgin i9")
+        cliente = FakeCliente([{"job": {"uuid": "job-1", "payload": payload}}])
+        agente = self.montar(cliente)
+        with unittest.mock.patch(
+            "app.agent.criar_dispositivo", return_value=candidato
+        ) as criar:
+            self.assertEqual(agente.ciclo(), "impresso")
+            criar.assert_called_with("Elgin i9")
+        self.assertEqual(len(candidato.escritas), 1)
+        self.assertEqual(len(self.impressora.escritas), 0)
+
+    def test_payload_sem_impressora_usa_padrao(self):
+        cliente = FakeCliente([{"job": {"uuid": "job-1", "payload": payload_venda()}}])
+        agente = self.montar(cliente)
+        with unittest.mock.patch(
+            "app.agent.criar_dispositivo",
+            side_effect=AssertionError("não deveria criar dispositivo"),
+        ):
+            self.assertEqual(agente.ciclo(), "impresso")
+        self.assertEqual(len(self.impressora.escritas), 1)
+
+    def test_impressora_do_payload_indisponivel_cai_para_padrao(self):
+        candidato = FakePrinterDevice(disponivel=False)
+        payload = dict(payload_venda(), impressora="Elgin i9")
+        cliente = FakeCliente([{"job": {"uuid": "job-1", "payload": payload}}])
+        agente = self.montar(cliente)
+        with unittest.mock.patch(
+            "app.agent.criar_dispositivo", return_value=candidato
+        ):
+            self.assertEqual(agente.ciclo(), "impresso")
+        self.assertEqual(len(self.impressora.escritas), 1)
+        self.assertEqual(len(candidato.escritas), 0)
+
 
 class CredencialTest(unittest.TestCase):
     def test_salva_e_carrega_credencial(self):

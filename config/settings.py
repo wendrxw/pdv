@@ -225,6 +225,10 @@ elif env("PDV_CACHE_BACKEND") == "memcached":
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(env("PDV_MEDIA_ROOT", BASE_DIR / "media"))
 
+# E-mail que recebe as notificações de novos contatos do site (leads).
+# Vazio desativa o envio. Configurar também EMAIL_HOST/* em produção.
+PDV_CONTATO_EMAIL = env("PDV_CONTATO_EMAIL", "")
+
 # Módulo fiscal NFC-e (tasks/TSK_00008.md).
 # Produção exige configuração explícita; homologação é o padrão seguro.
 SEFAZ_UF = env("SEFAZ_UF", "SP")

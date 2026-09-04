@@ -1,0 +1,100 @@
+{% extends "pdv_shell.html" %}
+{% block shell_title %}Pedido de contato{% endblock %}
+
+{% block shell_content %}
+<div class="mx-auto max-w-4xl p-6">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <nav class="text-sm text-slate-400">
+                <a href="{% url 'web:contatos' %}" class="transition-colors hover:text-brand-600">Pedidos de contato</a>
+                <span class="mx-1">›</span>
+                <span class="text-slate-600">{{ lead.nome }}</span>
+            </nav>
+            <h1 class="mt-1 text-2xl font-bold text-slate-900">{{ lead.nome }}</h1>
+        </div>
+        <a href="{% url 'web:contatos' %}"
+           class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+            {% include "partials/icon.html" with name="arrow-left" class="h-4 w-4" %}
+            Voltar
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-base font-bold text-slate-900">Mensagem</h2>
+                <p class="whitespace-pre-line rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{{ lead.mensagem }}</p>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-base font-bold text-slate-900">Dados do contato</h2>
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Nome</dt>
+                        <dd class="mt-1 text-sm text-slate-800">{{ lead.nome }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">E-mail</dt>
+                        <dd class="mt-1 text-sm text-slate-800"><a href="mailto:{{ lead.email }}" class="text-brand-600 hover:underline">{{ lead.email }}</a></dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Telefone</dt>
+                        <dd class="mt-1 text-sm text-slate-800">{{ lead.telefone }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Empresa</dt>
+                        <dd class="mt-1 text-sm text-slate-800">{{ lead.empresa|default:"—" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">IP de origem</dt>
+                        <dd class="mt-1 text-sm text-slate-800">{{ lead.ip_origem|default:"—" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Recebido em</dt>
+                        <dd class="mt-1 text-sm text-slate-800">{{ lead.data_criacao|date:"d/m/Y H:i" }}</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <div class="space-y-6">
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-base font-bold text-slate-900">Situação</h2>
+                <p class="text-sm text-slate-600">Status atual:</p>
+                <span class="mt-2 inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-700">{{ lead.get_status_display }}</span>
+                {% if lead.cliente_convertido %}
+                    <p class="mt-4 text-sm text-slate-600">Cliente convertido:</p>
+                    <p class="mt-1 text-sm font-semibold text-emerald-700">{{ lead.cliente_convertido.nome }}</p>
+                {% endif %}
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-base font-bold text-slate-900">Ações</h2>
+                <div class="space-y-2">
+                    {% if lead.status != "EM_ATENDIMENTO" %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="em_atendimento">
+                            <button type="submit" class="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100">Marcar em atendimento</button>
+                        </form>
+                    {% endif %}
+                    {% if lead.status != "CONVERTIDO" %}
+                        <form method="post" onsubmit="return confirm('Converter este lead em cliente da plataforma?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="converter">
+                            <button type="submit" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-700">Converter em cliente</button>
+                        </form>
+                    {% endif %}
+                    {% if lead.status != "DESCARTADO" %}
+                        <form method="post" onsubmit="return confirm('Descartar este lead?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="descartar">
+                            <button type="submit" class="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100">Descartar</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

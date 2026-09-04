@@ -10,6 +10,7 @@ interativa do primeiro uso e tem PRIORIDADE sobre os padrões do ambiente
 
 import json
 import os
+import sys
 from pathlib import Path
 
 
@@ -73,12 +74,18 @@ class Config:
 
     @classmethod
     def from_env(cls):
-        """Lê as variáveis de ambiente (PRINT_AGENT_*)."""
+        """Lê as variáveis de ambiente (PRINT_AGENT_*).
+
+        No Windows o dispositivo padrão é vazio (a impressora é
+        identificada pelo NOME no spooler, escolhido na configuração
+        interativa do primeiro uso). No Linux o padrão é ``/dev/usb/lp0``.
+        """
+        dispositivo_padrao = "" if sys.platform == "win32" else "/dev/usb/lp0"
         return cls(
             server_url=_env(
                 "PRINT_AGENT_SERVER_URL", "https://pdv.wendrxw.online"
             ),
-            device=_env("PRINTER_DEVICE", "/dev/usb/lp0"),
+            device=_env("PRINTER_DEVICE", dispositivo_padrao),
             pair_code=_env("PRINT_AGENT_PAIR_CODE") or None,
             largura_padrao=_env("PRINT_AGENT_LARGURA_PADRAO", "58"),
             codepage=_env("PRINTER_CODEPAGE", "utf8"),

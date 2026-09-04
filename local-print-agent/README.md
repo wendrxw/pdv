@@ -106,6 +106,7 @@ Estações** do PDV).
 print-agent.exe test          # página de teste na térmica
 print-agent.exe label-test    # etiqueta de calibração (L42 Pro)
 print-agent.exe codepage-test # ajuste de acentos
+print-agent.exe listar-impressoras # lista as impressoras detectadas no Windows
 ```
 
 > O envio usa o spooler do Windows com datatype **RAW** (win32print) —
@@ -130,8 +131,9 @@ python3 -m app.main run            # loop: autentica, poll, imprime, reporta
 python3 -m app.main pair           # apenas pareamento
 python3 -m app.main test           # página de teste na impressora (ESC/POS ou texto)
 python3 -m app.main raw-test       # teste em texto puro (printf > /dev/usb/lp0)
-python3 -m app.main codepage-test  # amostra de acentos em várias codificações
+python3 -m app.main codepage-test  # amostra em várias codificações (acentos)
 python3 -m app.main label-test     # etiqueta de calibração (Elgin L42 Pro)
+python3 -m app.main listar-impressoras  # impressoras detectadas (Windows)
 ```
 
 ## Modo texto puro (printf) — alternativa para a Tomate MDK-080

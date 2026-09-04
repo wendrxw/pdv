@@ -8,12 +8,13 @@ class ConfiguracaoImpressaoAdmin(admin.ModelAdmin):
     list_display = (
         "tenant",
         "largura",
+        "impressora_fiscal",
         "estacao_padrao",
         "tentativas_maximas",
         "data_atualizacao",
     )
     list_filter = ("largura",)
-    search_fields = ("tenant__nome", "nome_loja", "cnpj")
+    search_fields = ("tenant__nome", "nome_loja", "cnpj", "impressora_fiscal")
 
 
 @admin.register(EstacaoImpressao)

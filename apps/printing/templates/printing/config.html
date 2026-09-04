@@ -25,9 +25,27 @@
                 </p>
             </div>
             <a href="https://github.com/wendrxw/pdv/releases/latest/download/print-agent.exe"
-               class="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+               class="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
                 {% include "partials/icon.html" with name="upload" class="h-4 w-4" %}
                 Baixar agente (Windows)
+            </a>
+        </div>
+    </div>
+
+    <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-sm font-bold text-navy-900">Atalho da Frente de Caixa</h2>
+                <p class="mt-1 text-sm text-slate-600">
+                    Baixe um atalho para a <strong>área de trabalho</strong> do seu
+                    computador. Ele abre a tela de venda direto (com o caixa aberto
+                    automaticamente) em <strong>tela cheia</strong>, como um aplicativo.
+                </p>
+            </div>
+            <a href="{% url 'printing:atalho_caixa' %}"
+               class="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
+                {% include "partials/icon.html" with name="upload" class="h-4 w-4" %}
+                Criar atalho na área de trabalho
             </a>
         </div>
     </div>
@@ -51,6 +69,12 @@
                 <label class="mb-1.5 block text-sm font-medium text-slate-700">{{ form.estacao_padrao.label }}</label>
                 {{ form.estacao_padrao }}
                 {% if form.estacao_padrao.errors %}<p class="mt-1 text-xs text-red-600">{{ form.estacao_padrao.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">{{ form.impressora_fiscal.label }}</label>
+                {{ form.impressora_fiscal }}
+                {% if form.impressora_fiscal.errors %}<p class="mt-1 text-xs text-red-600">{{ form.impressora_fiscal.errors.0 }}</p>{% endif %}
+                <p class="mt-1 text-xs text-slate-400">Nome como aparece em "Dispositivos e Impressoras" (Windows). A impressora de <a href="{% url 'labels:config' %}" class="text-brand-600 hover:underline">etiquetas</a> é definida na própria configuração de etiquetas.</p>
             </div>
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-slate-700">{{ form.tentativas_maximas.label }}</label>

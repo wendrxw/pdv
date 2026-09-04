@@ -36,6 +36,7 @@ class ConfigImpressaoViewTest(ViewsBase):
             {
                 "largura": "80",
                 "estacao_padrao": str(estacao.pk),
+                "impressora_fiscal": "Elgin i9",
                 "tentativas_maximas": 7,
                 "nome_loja": "Loja Nova",
                 "cnpj": "00000000000100",
@@ -48,6 +49,7 @@ class ConfigImpressaoViewTest(ViewsBase):
         config = ConfiguracaoImpressao.carregar(self.tenant)
         self.assertEqual(config.largura, "80")
         self.assertEqual(config.nome_loja, "Loja Nova")
+        self.assertEqual(config.impressora_fiscal, "Elgin i9")
         self.assertEqual(config.estacao_padrao, estacao)
 
     def test_usuario_sem_tenant_redireciona(self):
@@ -57,6 +59,31 @@ class ConfigImpressaoViewTest(ViewsBase):
         self.client.force_login(staff)
         resposta = self.client.get(reverse("printing:config"))
         self.assertEqual(resposta.status_code, 302)
+
+
+class AtalhoCaixaViewTest(ViewsBase):
+    def test_requer_login(self):
+        self.client.logout()
+        resposta = self.client.get(reverse("printing:atalho_caixa"))
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_gera_atalho_windows_com_fullscreen(self):
+        resposta = self.client.get(
+            reverse("printing:atalho_caixa"), HTTP_USER_AGENT="Windows NT 10.0"
+        )
+        self.assertEqual(resposta.status_code, 200)
+        conteudo = resposta.content.decode()
+        self.assertIn("[InternetShortcut]", conteudo)
+        self.assertIn("fullscreen=1", conteudo)
+        self.assertIn("PDV - Frente de Caixa.url", resposta["Content-Disposition"])
+
+    def test_gera_atalho_linux(self):
+        resposta = self.client.get(
+            reverse("printing:atalho_caixa"), HTTP_USER_AGENT="Linux x86_64"
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("[Desktop Entry]", resposta.content.decode())
+        self.assertIn("fullscreen=1", resposta.content.decode())
 
 
 class EstacoesViewTest(ViewsBase):

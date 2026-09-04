@@ -100,6 +100,7 @@ def montar_dados_comprovante(venda, config) -> dict:
     return {
         "versao": 1,
         "largura_mm": config.largura,
+        "impressora": config.impressora_fiscal or "",
         "cabecalho": {
             "nome": nome,
             "cnpj": cnpj,

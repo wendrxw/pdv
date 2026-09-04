@@ -13,6 +13,7 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
         fields = [
             "largura",
             "estacao_padrao",
+            "impressora_fiscal",
             "tentativas_maximas",
             "nome_loja",
             "cnpj",
@@ -21,6 +22,9 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
             "mensagem_final",
         ]
         widgets = {
+            "impressora_fiscal": forms.TextInput(
+                attrs={"placeholder": "Ex.: Elgin i9 / Bematech MP-4200"}
+            ),
             "nome_loja": forms.TextInput(attrs={"placeholder": "Nome da loja"}),
             "cnpj": forms.TextInput(
                 attrs={"placeholder": "Somente números (ex.: 00000000000100)"}
@@ -44,6 +48,7 @@ class ConfiguracaoImpressaoForm(forms.ModelForm):
         for campo in (
             "largura",
             "estacao_padrao",
+            "impressora_fiscal",
             "tentativas_maximas",
             "nome_loja",
             "cnpj",

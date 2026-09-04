@@ -65,6 +65,60 @@ class ContatoTest(TestCase):
         self.assertEqual(resposta.status_code, 200)
 
 
+class PainelContatosTest(TestCase):
+    """Painel da equipe da plataforma para ler/gerir os pedidos de contato."""
+
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username="staff-contatos", password="senha-12345"
+        )
+        self.staff.is_staff = True
+        self.staff.save()
+        self.lead = LeadContato.objects.create(
+            nome="Líder Comercial",
+            email="lider@empresa.com.br",
+            telefone="(16) 99999-9999",
+            empresa="Padaria Pão Quente",
+            mensagem="Quero saber mais sobre o sistema.",
+        )
+
+    def test_painel_exige_staff(self):
+        resposta = self.client.get("/painel/contatos/")
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_staff_lista_contatos(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get("/painel/contatos/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Líder Comercial")
+        self.assertContains(resposta, "Padaria Pão Quente")
+
+    def test_staff_ve_detalhe(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.get(f"/painel/contatos/{self.lead.uuid}/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Quero saber mais sobre o sistema.")
+
+    def test_marcar_em_atendimento(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.post(
+            f"/painel/contatos/{self.lead.uuid}/", {"acao": "em_atendimento"}
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.status, LeadContato.Status.EM_ATENDIMENTO)
+
+    def test_converter_lead_em_cliente(self):
+        self.client.force_login(self.staff)
+        resposta = self.client.post(
+            f"/painel/contatos/{self.lead.uuid}/", {"acao": "converter"}
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.status, LeadContato.Status.CONVERTIDO)
+        self.assertIsNotNone(self.lead.cliente_convertido)
+
+
 class DashboardTest(TestCase):
     def setUp(self):
         self.tenant = Tenant.objects.create(
