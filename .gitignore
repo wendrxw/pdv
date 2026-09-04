@@ -31,3 +31,6 @@ staticfiles/
 # Credenciais de acesso ao servidor (nunca versionar)
 deploy/servidor.ssh.env
 .deploy-version
+
+db.sqlite3.nao-usar-em-producao
+git
